@@ -1,9 +1,9 @@
 // --- Constants: Fill these for Ubidots ---
-const UBIDOTS_TOKEN = 'BBUS-2XVKWuuAW41Bl7VwHOKMZ8e7dxva65';
+const UBIDOTS_TOKEN = 'BBUS-ZGjQBOrb7CD0wdMYkDxpoS5RtnAPdv';
 const DEVICE_LABEL = 'esp32';
 const VARIABLE_LABEL = 'sensor'; 
 
-const UBIDOTS_URL = `https://stem.api.ubidots.com/api/v1.6/devices/${DEVICE_LABEL}/${VARIABLE_LABEL}/values`;
+const UBIDOTS_URL = `https://industrial.api.ubidots.com/api/v1.6/devices/${DEVICE_LABEL}/${VARIABLE_LABEL}/values`;
 
 // --- Globals ---
 let patientData = null;
