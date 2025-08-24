@@ -1,93 +1,71 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Virtual IoT-Based ECG System</title>
-    <!-- Chart.js CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- jsPDF CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <!-- CSS -->
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <title>Live ECG Dashboard</title>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 </head>
 <body>
-    <div id="main-container">
-        <!-- Patient Form Page -->
-        <section id="patient-form-section">
-            <div class="form-card">
-                <h2>Patient Registration</h2>
-                <form id="patient-form">
-                    <label>
-                        Full Name
-                        <input type="text" name="name" required>
-                    </label>
-                    <label>
-                        Age
-                        <input type="number" name="age" required min="0" max="120">
-                    </label>
-                    <label>
-                        Gender
-                        <select name="gender" required>
-                            <option value="">Select</option>
-                            <option value="Male">Male</option>
-                            <option value="Female">Female</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </label>
-                    <label>
-                        Patient ID
-                        <input type="text" name="patientId" required>
-                    </label>
-                    <button type="submit" class="btn-primary">Start Monitoring</button>
-                </form>
-            </div>
-        </section>
+  <h2>📈 Real-Time ECG Signal</h2>
+  <div id="ecg-plot" style="width:100%;height:500px;"></div>
 
-        <!-- ECG Dashboard (hidden until form is submitted) -->
-        <section id="dashboard-section" style="display: none;">
-            <header class="dashboard-header">
-                <div>
-                    <h3>Patient Info</h3>
-                    <p id="patient-info"></p>
-                </div>
-                <button id="download-report" class="btn-secondary">Download Report (PDF)</button>
-            </header>
-            <div class="dashboard-content">
-                <div class="ecg-graph-panel">
-                    <canvas id="ecg-chart"></canvas>
-                </div>
-                <div class="info-panel">
-                    <div class="hr-panel">
-                        <h4>Live Analysis</h4>
-                        <p><strong>Heart Rate:</strong> <span id="hr-value">--</span> bpm</p>
-                        <p><strong>RR Interval:</strong> <span id="rr-value">--</span> ms</p>
-                        <p><strong>Variability:</strong> <span id="variability-value">--</span></p>
-                        <p><strong>Flags:</strong> <span id="flags-value">--</span></p>
-                    </div>
-                    <div class="summary-panel">
-                        <h4>Summary</h4>
-                        <div id="analysis-summary">--</div>
-                    </div>
-                </div>
-            </div>
+  <script>
+    // === Ubidots MQTT WebSocket config ===
+    const UBIDOTS_TOKEN = "BBUS-ZGjQBOrb7CD0wdMYkDxpoS5RtnAPdv";  // replace with your token
+    const DEVICE_LABEL = "esp32";
+    const VARIABLE_LABEL = "sensor";
 
-            <!-- Processing Flow Diagram -->
-            <div class="flow-diagram">
-                <div class="flow-step" id="step-1">ECG Data Stream</div>
-                <div class="flow-arrow">→</div>
-                <div class="flow-step" id="step-2">Preprocessing</div>
-                <div class="flow-arrow">→</div>
-                <div class="flow-step" id="step-3">Pan–Tompkins Algorithm</div>
-                <div class="flow-arrow">→</div>
-                <div class="flow-step" id="step-4">Post-Processing</div>
-                <div class="flow-arrow">→</div>
-                <div class="flow-step" id="step-5">Logic-Based Analysis</div>
-                <div class="flow-arrow">→</div>
-                <div class="flow-step" id="step-6">Summary</div>
-            </div>
-        </section>
-    </div>
-    <script src="script.js"></script>
+    // Connect to Ubidots MQTT over WebSockets
+    const client = mqtt.connect("wss://industrial.api.ubidots.com/mqtt", {
+      username: UBIDOTS_TOKEN,  // token goes here
+      password: UBIDOTS_TOKEN              // password left blank
+    });
+
+    client.on("connect", () => {
+      console.log("✅ Connected to Ubidots MQTT");
+      const topic = `/v1.6/devices/${DEVICE_LABEL}/${VARIABLE_LABEL}/lv`;
+      client.subscribe(topic, err => {
+        if (!err) console.log("📡 Subscribed to:", topic);
+      });
+    });
+
+    // Initialize empty ECG trace
+    let ecgData = {
+      x: [],
+      y: [],
+      type: "scatter",
+      mode: "lines",
+      line: {color: "red"}
+    };
+
+    Plotly.newPlot("ecg-plot", [ecgData], {
+      margin: { t: 20 },
+      xaxis: { title: "Samples" },
+      yaxis: { title: "ECG (mV)" }
+    });
+
+    let counter = 0;
+    const MAX_POINTS = 500; // limit to avoid lag
+
+    // Handle incoming messages
+    client.on("message", (topic, message) => {
+      const value = parseFloat(message.toString());
+      console.log("ECG:", value);
+
+      ecgData.x.push(counter++);
+      ecgData.y.push(value);
+
+      if (ecgData.x.length > MAX_POINTS) {
+        ecgData.x.shift();
+        ecgData.y.shift();
+      }
+
+      Plotly.update("ecg-plot", {
+        x: [ecgData.x],
+        y: [ecgData.y]
+      });
+    });
+  </script>
 </body>
 </html>
