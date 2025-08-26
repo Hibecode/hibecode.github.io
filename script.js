@@ -9,7 +9,7 @@ const CONFIG = {
         baseUrl: 'https://industrial.ubidots.com/api/v1.6',
         device: 'esp32',
         variable: 'sensor',
-        token: 'YOUR_UBIDOTS_TOKEN',
+        token: 'BBUS-ZGjQBOrb7CD0wdMYkDxpoS5RtnAPdv',
         endpoint: '/lv'
     },
     sampling: {
