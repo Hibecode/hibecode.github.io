@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual IoT-Based ECG System</title>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- jsPDF CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="main-container">
+        <!-- System Info Bar -->
+        <div class="system-info-bar">
+            <span>Last Update: <span id="system-time">2025-08-26 06:46:44</span></span>
+            <span>User: <span id="system-user">Hibecode</span></span>
+        </div>
+
+        <!-- Patient Form Page -->
+        <section id="patient-form-section">
+            <div class="form-card">
+                <h2>Patient Registration</h2>
+                <form id="patient-form">
+                    <label>
+                        Full Name
+                        <input type="text" name="name" required>
+                    </label>
+                    <label>
+                        Age
+                        <input type="number" name="age" required min="0" max="120">
+                    </label>
+                    <label>
+                        Gender
+                        <select name="gender" required>
+                            <option value="">Select</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </label>
+                    <label>
+                        Patient ID
+                        <input type="text" name="patientId" required>
+                    </label>
+                    <button type="submit" class="btn-primary">Register Patient</button>
+                </form>
+            </div>
+        </section>
+
+        <!-- ECG Dashboard -->
+        <section id="dashboard-section" style="display: none;">
+            <header class="dashboard-header">
+                <div class="dashboard-header-left">
+                    <h3>Patient Information</h3>
+                    <p id="patient-info"></p>
+                </div>
+                <div class="dashboard-header-right">
+                    <div class="monitoring-controls">
+                        <button id="start-monitoring" class="btn-primary">Start Monitoring</button>
+                        <button id="stop-monitoring" class="btn-secondary" disabled>Stop Monitoring</button>
+                    </div>
+                    <button id="download-report" class="btn-secondary">Download Report (PDF)</button>
+                </div>
+            </header>
+
+            <div id="connection-status" class="connection-status">Disconnected</div>
+
+            <div class="dashboard-content">
+                <div class="ecg-graph-panel">
+                    <canvas id="ecg-chart"></canvas>
+                </div>
+                <div class="info-panel">
+                    <div class="hr-panel">
+                        <h4>Live Analysis</h4>
+                        <p><strong>Heart Rate:</strong> <span id="hr-value">--</span> bpm</p>
+                        <p><strong>RR Interval:</strong> <span id="rr-value">--</span> ms</p>
+                        <p><strong>Variability:</strong> <span id="variability-value">--</span></p>
+                        <p><strong>Flags:</strong> <span id="flags-value">--</span></p>
+                    </div>
+                    <div class="summary-panel">
+                        <h4>Summary</h4>
+                        <div id="analysis-summary">--</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Processing Flow Diagram -->
+            <div class="flow-diagram">
+                <div class="flow-step" id="step-1">ECG Data Stream</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step" id="step-2">Preprocessing</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step" id="step-3">Pan–Tompkins Algorithm</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step" id="step-4">Post-Processing</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step" id="step-5">Logic-Based Analysis</div>
+                <div class="flow-arrow">→</div>
+                <div class="flow-step" id="step-6">Summary</div>
+            </div>
+        </section>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
