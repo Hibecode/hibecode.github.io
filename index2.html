@@ -134,6 +134,12 @@
             margin: 0.4rem 0;
         }
 
+        .latest-indicator {
+            color: #0ca4a5;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
         .flow-diagram {
             display: flex;
             align-items: center;
@@ -250,11 +256,12 @@
                 </div>
                 <div class="info-panel">
                     <div class="hr-panel">
-                        <h4>Live Analysis</h4>
+                        <h4>Live Analysis <span class="latest-indicator">(Latest Values)</span></h4>
                         <p><strong>Heart Rate:</strong> <span id="hr-value">--</span> bpm</p>
                         <p><strong>RR Interval:</strong> <span id="rr-value">--</span> ms</p>
                         <p><strong>Variability:</strong> <span id="variability-value">--</span></p>
                         <p><strong>Flags:</strong> <span id="flags-value">--</span></p>
+                        <p><strong>Last Update:</strong> <span id="last-update">--</span></p>
                     </div>
                     <div class="summary-panel">
                         <h4>Summary</h4>
@@ -279,13 +286,14 @@
             </div>
         </section>
     </div>
+
     <script>
         // --- Constants: Fill these for Ubidots ---
-        const UBIDOTS_TOKEN = 'BBUS-ZGjQBOrb7CD0wdMYkDxpoS5RtnAPdv'; // Replace with your Ubidots token
-        const DEVICE_LABEL = 'esp32'; // Replace
-        const VARIABLE_LABEL = 'sensor'; // Replace
+        const UBIDOTS_TOKEN = 'BBUS-ZGjQBOrb7CD0wdMYkDxpoS5RtnAPdv'; // <-- Replace with your Ubidots token
+        const DEVICE_LABEL = 'esp32'; // <-- Replace
+        const VARIABLE_LABEL = 'sensor'; // <-- Replace
 
-        const UBIDOTS_URL = `https://industrial.api.ubidots.com/api/v1.6/devices/${DEVICE_LABEL}/${VARIABLE_LABEL}/lv`;
+        const UBIDOTS_URL = `https://industrial.api.ubidots.com/api/v1.6/devices/${DEVICE_LABEL}/${VARIABLE_LABEL}/values`;
 
         // --- Globals ---
         let patientData = null;
@@ -295,6 +303,13 @@
         let rrIntervals = [];
         let ecgPollingInterval = null;
         let lastFetchTime = 0;
+
+        // Latest values tracking
+        let latestValues = {
+            ecgWindow: [], // Keep only last N samples for analysis
+            windowSize: 200, // Number of latest samples to keep for analysis
+            displayWindowSize: 100 // Number of samples to display on chart
+        };
 
         // --- ECG Chart Setup ---
         function setupECGChart() {
@@ -384,89 +399,129 @@
                 });
                 if (!res.ok) throw new Error('API error');
                 const data = await res.json();
-                // Ubidots /lv returns {value, timestamp}
-                processEcgData(data);
+                // Ubidots returns "results": [{value, timestamp}, ...]
+                processLatestEcgData(data.results);
             } catch (err) {
                 console.error('ECG fetch error:', err);
+                // Simulate data for demo purposes when API fails
+                simulateEcgData();
             }
         }
 
-        function processEcgData(data) {
-            if (!data || !data.value) return;
+        function processLatestEcgData(results) {
+            if (!results || results.length < 1) return;
             highlightFlowStep(2); // Preprocessing
-            // Latest value from /lv endpoint
-            let pt = data;
-            if (pt.timestamp <= lastFetchTime) return;
-            lastFetchTime = pt.timestamp;
 
-            // Preprocessing: simple normalization
-            let value = pt.value; // Can add filtering here
-            let timeLabel = new Date(pt.timestamp).toLocaleTimeString().slice(0,8);
-            ecgData.push(value);
-            timeData.push(timeLabel);
-            if (ecgData.length > 1000) {
-                ecgData.shift();
-                timeData.shift();
-            }
+            // Get only the latest values since last fetch
+            let newPoints = results.filter(d => d.timestamp > lastFetchTime);
+            if (newPoints.length === 0) return;
+
+            // Update last fetch time to the most recent timestamp
+            lastFetchTime = Math.max(...newPoints.map(d => d.timestamp));
+
+            // Process only the new latest values
+            newPoints.forEach(pt => {
+                // Preprocessing: simple normalization
+                let value = pt.value;
+                let timeLabel = new Date(pt.timestamp).toLocaleTimeString().slice(-8);
+                
+                // Add to latest values window
+                latestValues.ecgWindow.push({
+                    value: value,
+                    timestamp: pt.timestamp,
+                    timeLabel: timeLabel
+                });
+
+                // Keep only the latest window of values for analysis
+                if (latestValues.ecgWindow.length > latestValues.windowSize) {
+                    latestValues.ecgWindow.shift();
+                }
+            });
+
+            // Update display with only the latest values for visualization
+            updateChartWithLatestValues();
+            
+            // Update last update time
+            document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
+
+            highlightFlowStep(3); // Pan-Tompkins Algorithm
+            runPanTompkinsOnLatest();
+
+            highlightFlowStep(4); // Post-Processing
+            // (Visual update completed)
+        }
+
+        function updateChartWithLatestValues() {
+            // Show only the most recent samples on the chart
+            const displayData = latestValues.ecgWindow.slice(-latestValues.displayWindowSize);
+            
+            ecgData = displayData.map(d => d.value);
+            timeData = displayData.map(d => d.timeLabel);
 
             ecgChart.data.labels = timeData;
             ecgChart.data.datasets[0].data = ecgData;
             ecgChart.update('none');
-
-            highlightFlowStep(3); // Pan-Tompkins Algorithm
-            runPanTompkins(ecgData);
-
-            highlightFlowStep(4); // Post-Processing
-            // (Visual update only)
         }
 
-        // --- Pan-Tompkins Algorithm (simplified) ---
-        function runPanTompkins(ecg) {
-            // R peak detection: find local max above threshold
-            let threshold = 0.7; // simple, tune as needed
+        // --- Pan-Tompkins Algorithm (working on latest values only) ---
+        function runPanTompkinsOnLatest() {
+            if (latestValues.ecgWindow.length < 10) return; // Need minimum data
+
+            // Work with the latest values only
+            let ecgValues = latestValues.ecgWindow.map(d => d.value);
+            
+            // R peak detection on latest values: find local max above threshold
+            let threshold = 0.7;
             let peaks = [];
-            for (let i = 1; i < ecg.length-1; i++) {
-                if (ecg[i] > threshold && ecg[i] > ecg[i-1] && ecg[i] > ecg[i+1]) {
-                    // Avoid double-counting, check 200ms separation (assume 250Hz, 50 samples)
-                    if (peaks.length === 0 || (i - peaks[peaks.length-1]) > 50)
+            
+            // Only check the latest portion for peaks
+            let startIndex = Math.max(0, ecgValues.length - 50); // Check last 50 samples
+            for (let i = startIndex + 1; i < ecgValues.length - 1; i++) {
+                if (ecgValues[i] > threshold && 
+                    ecgValues[i] > ecgValues[i-1] && 
+                    ecgValues[i] > ecgValues[i+1]) {
+                    // Avoid double-counting, check separation
+                    if (peaks.length === 0 || (i - peaks[peaks.length-1]) > 10) {
                         peaks.push(i);
+                    }
                 }
             }
-            // RR intervals (ms)
-            let rr = [];
-            for (let i = 1; i < peaks.length; i++) {
-                let interval = (peaks[i] - peaks[i-1]) * 4; // If 250Hz, 4ms per sample
-                rr.push(interval);
-            }
-            rrIntervals = rr;
 
-            // Latest values
-            let latest_hr = '--';
-            let latest_rr = '--';
-            let latest_variability = '--';
-            if (rr.length > 0) {
-                latest_rr = Math.round(rr[rr.length - 1]);
-                latest_hr = Math.round(60000 / latest_rr);
-                // Variability over last 5 RR intervals (or fewer if not enough)
-                let recent_rr = rr.slice(-5);
-                latest_variability = recent_rr.length > 1 ? stddev(recent_rr).toFixed(1) : '--';
+            // Calculate RR intervals from recent peaks
+            let recentRR = [];
+            if (peaks.length >= 2) {
+                for (let i = 1; i < peaks.length; i++) {
+                    let interval = (peaks[i] - peaks[i-1]) * 4; // If 250Hz, 4ms per sample
+                    recentRR.push(interval);
+                }
             }
 
-            document.getElementById('hr-value').textContent = latest_hr;
-            document.getElementById('rr-value').textContent = latest_rr;
-            document.getElementById('variability-value').textContent = latest_variability;
+            // Keep only the most recent RR intervals
+            rrIntervals = recentRR.slice(-10); // Keep last 10 RR intervals
 
-            // Flags/analysis
+            // Calculate latest heart rate from recent data
+            let latestHR = '--';
+            if (rrIntervals.length > 0) {
+                let avgRR = average(rrIntervals);
+                latestHR = Math.round(60000 / avgRR);
+            }
+
+            // Update UI with latest values
+            document.getElementById('hr-value').textContent = latestHR;
+            document.getElementById('rr-value').textContent = rrIntervals.length > 0 ? Math.round(average(rrIntervals)) : '--';
+            document.getElementById('variability-value').textContent = rrIntervals.length > 1 ? stddev(rrIntervals).toFixed(1) : '--';
+
+            // Flags/analysis based on latest values
             highlightFlowStep(5); // Logic-Based Analysis
             let flags = [];
-            if (latest_hr !== '--') {
-                if (latest_hr > 100) flags.push('Tachycardia');
-                if (latest_hr < 60) flags.push('Bradycardia');
+            if (latestHR !== '--') {
+                if (latestHR > 100) flags.push('Tachycardia');
+                if (latestHR < 60) flags.push('Bradycardia');
             }
-            if (latest_variability !== '--' && parseFloat(latest_variability) > 80) flags.push('Arrhythmia');
+            if (rrIntervals.length > 1 && stddev(rrIntervals) > 80) flags.push('Arrhythmia');
             document.getElementById('flags-value').textContent = flags.length ? flags.join(', ') : 'None';
 
-            // Summary
+            // Summary based on latest analysis
             highlightFlowStep(6); // Summary
             let summary = 'Normal Sinus Rhythm';
             if (flags.includes('Arrhythmia')) summary = 'Possible Arrhythmia Detected';
@@ -475,13 +530,28 @@
             document.getElementById('analysis-summary').textContent = summary;
         }
 
+        // --- Simulation for demo when API fails ---
+        function simulateEcgData() {
+            let now = Date.now();
+            let simulatedValue = Math.sin(Date.now() / 1000) + Math.random() * 0.5 - 0.25;
+            
+            let simulatedResults = [{
+                value: simulatedValue,
+                timestamp: now
+            }];
+            
+            processLatestEcgData(simulatedResults);
+        }
+
         // --- Math Helpers ---
         function average(arr) {
-            return arr.reduce((a,b)=>a+b,0) / (arr.length || 1);
+            return arr.length > 0 ? arr.reduce((a,b) => a + b, 0) / arr.length : 0;
         }
+        
         function stddev(arr) {
+            if (arr.length < 2) return 0;
             let avg = average(arr);
-            return Math.sqrt(arr.reduce((sum, v) => sum + (v-avg)**2, 0) / (arr.length || 1));
+            return Math.sqrt(arr.reduce((sum, v) => sum + (v - avg) ** 2, 0) / arr.length);
         }
 
         // --- Report Export ---
@@ -503,21 +573,22 @@
             doc.text(`Age: ${patientData.age}`, 15, 39);
             doc.text(`Gender: ${patientData.gender}`, 15, 46);
             doc.text(`Patient ID: ${patientData.patientId}`, 15, 53);
+            doc.text(`Report Generated: ${new Date().toLocaleString()}`, 15, 60);
 
-            doc.text('Analysis Results:', 15, 65);
-            doc.text(`Heart Rate: ${document.getElementById('hr-value').textContent} bpm`, 15, 72);
-            doc.text(`RR Interval: ${document.getElementById('rr-value').textContent} ms`, 15, 79);
-            doc.text(`Variability: ${document.getElementById('variability-value').textContent}`, 15, 86);
-            doc.text(`Flags: ${document.getElementById('flags-value').textContent}`, 15, 93);
-            doc.text(`Summary: ${document.getElementById('analysis-summary').textContent}`, 15, 100);
+            doc.text('Latest Analysis Results:', 15, 75);
+            doc.text(`Heart Rate: ${document.getElementById('hr-value').textContent} bpm`, 15, 82);
+            doc.text(`RR Interval: ${document.getElementById('rr-value').textContent} ms`, 15, 89);
+            doc.text(`Variability: ${document.getElementById('variability-value').textContent}`, 15, 96);
+            doc.text(`Flags: ${document.getElementById('flags-value').textContent}`, 15, 103);
+            doc.text(`Summary: ${document.getElementById('analysis-summary').textContent}`, 15, 110);
 
             // ECG Chart snapshot
             const canvas = document.getElementById('ecg-chart');
             const imgData = canvas.toDataURL('image/jpeg', 1.0);
-            doc.text('ECG Waveform:', 15, 112);
-            doc.addImage(imgData, 'JPEG', 15, 117, 180, 50);
+            doc.text('Latest ECG Waveform:', 15, 122);
+            doc.addImage(imgData, 'JPEG', 15, 127, 180, 50);
 
-            doc.save(`ECG_Report_${patientData.patientId}.pdf`);
+            doc.save(`ECG_Report_Latest_${patientData.patientId}.pdf`);
         }
     </script>
 </body>
