@@ -3,7 +3,7 @@ const UBIDOTS_TOKEN = 'BBUS-ZGjQBOrb7CD0wdMYkDxpoS5RtnAPdv'; // <-- Replace with
 const DEVICE_LABEL = 'esp32'; // <-- Replace
 const VARIABLE_LABEL = 'sensor'; // <-- Replace
 
-const UBIDOTS_URL = `https://industrial.api.ubidots.com/api/v1.6/devices/${DEVICE_LABEL}/${VARIABLE_LABEL}/values?start=1634792400000`;
+const UBIDOTS_URL = `https://industrial.api.ubidots.com/api/v1.6/devices/${DEVICE_LABEL}/${VARIABLE_LABEL}/values`;
 //const UBIDOTS_URL = `https://industrial.api.ubidots.com/api/v1.6/devices/${DEVICE_LABEL}/${VARIABLE_LABEL}/values?start=1756060150692`;
 //1756201190
 
