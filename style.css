@@ -1,3 +1,4 @@
+/* Base Styles */
 body {
     font-family: 'Segoe UI', Arial, sans-serif;
     background: #f8fbfc;
@@ -12,12 +13,25 @@ body {
     padding: 1rem;
 }
 
+/* System Info Bar */
+.system-info-bar {
+    background: #16425b;
+    color: #fff;
+    padding: 0.5rem 1rem;
+    display: flex;
+    justify-content: flex-end;
+    gap: 2rem;
+    font-size: 0.9rem;
+    margin: -1rem -1rem 1rem -1rem;
+}
+
+/* Patient Form */
 .form-card {
     background: #fff;
     border-radius: 12px;
     box-shadow: 0 2px 16px rgba(22, 66, 91, 0.06);
     max-width: 400px;
-    margin: 4rem auto;
+    margin: 2rem auto;
     padding: 2rem 2.5rem;
 }
 
@@ -33,7 +47,8 @@ body {
     font-weight: 500;
 }
 
-#patient-form input, #patient-form select {
+#patient-form input, 
+#patient-form select {
     width: 100%;
     padding: 0.6rem;
     margin-top: 0.3rem;
@@ -42,94 +57,142 @@ body {
     font-size: 1rem;
 }
 
-.btn-primary, .btn-secondary {
+/* Buttons */
+.btn-primary, 
+.btn-secondary {
     background: linear-gradient(90deg, #0ca4a5, #1e6f99);
     color: #fff;
     border: none;
     border-radius: 6px;
     padding: 0.7rem 1.5rem;
     font-size: 1rem;
-    font-weight: 700;
+    font-weight: 600;
     cursor: pointer;
-    margin-top: 1.2rem;
-    box-shadow: 0 2px 8px rgba(22, 66, 91, 0.07);
-    transition: background 0.2s;
+    transition: all 0.2s;
 }
 
 .btn-secondary {
     background: linear-gradient(90deg, #1e6f99, #0ca4a5);
-    margin-top: 0;
 }
 
-.btn-primary:hover, .btn-secondary:hover {
+.btn-primary:hover, 
+.btn-secondary:hover {
     background: linear-gradient(90deg, #16425b, #0ca4a5);
+    transform: translateY(-1px);
 }
 
+.btn-primary:disabled, 
+.btn-secondary:disabled {
+    background: #cccccc;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Dashboard */
 .dashboard-header {
+    background: #fff;
+    padding: 1.5rem;
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 16px rgba(22, 66, 91, 0.06);
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    background: #e4f5fa;
-    padding: 1rem 2rem;
-    border-radius: 8px;
-    margin-bottom: 1rem;
-    box-shadow: 0 1px 4px rgba(22, 66, 91, 0.05);
+    align-items: flex-start;
 }
 
-#patient-info {
-    font-size: 1rem;
-    color: #16425b;
+.dashboard-header-left h3 {
+    color: #0ca4a5;
+    margin: 0 0 0.5rem 0;
 }
 
+.dashboard-header-right {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-end;
+}
+
+/* Monitoring Controls */
+.monitoring-controls {
+    display: flex;
+    gap: 1rem;
+}
+
+/* Connection Status */
+.connection-status {
+    text-align: center;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    margin: 1rem 0;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.connected {
+    background-color: #4CAF50;
+    color: white;
+}
+
+.disconnected {
+    background-color: #f44336;
+    color: white;
+}
+
+.error {
+    background-color: #ff9800;
+    color: white;
+}
+
+/* Dashboard Content */
 .dashboard-content {
     display: flex;
-    flex-wrap: wrap;
-    gap: 2rem;
+    gap: 1.5rem;
     margin-bottom: 1.5rem;
 }
 
 .ecg-graph-panel {
-    flex: 2 1 500px;
+    flex: 2;
     background: #fff;
     border-radius: 12px;
-    box-shadow: 0 2px 16px rgba(22, 66, 91, 0.09);
-    padding: 1rem;
-    min-width: 320px;
-    min-height: 350px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    box-shadow: 0 2px 16px rgba(22, 66, 91, 0.06);
+    padding: 1.5rem;
+    min-height: 400px;
 }
 
 .info-panel {
-    flex: 1 1 300px;
+    flex: 1;
     background: #fff;
     border-radius: 12px;
-    box-shadow: 0 2px 16px rgba(22, 66, 91, 0.08);
+    box-shadow: 0 2px 16px rgba(22, 66, 91, 0.06);
     padding: 1.5rem;
-    min-width: 260px;
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
 }
 
-.hr-panel h4, .summary-panel h4 {
+.hr-panel h4, 
+.summary-panel h4 {
     color: #0ca4a5;
-    margin-bottom: 0.7rem;
+    margin: 0 0 1rem 0;
 }
 
-.hr-panel p, .summary-panel div {
+.hr-panel p {
+    margin: 0.5rem 0;
     font-size: 1.1rem;
-    margin: 0.4rem 0;
 }
 
+/* Flow Diagram */
 .flow-diagram {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
-    margin: 2rem 0 1rem 0;
+    margin: 2rem 0;
     flex-wrap: wrap;
+    padding: 1rem;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 16px rgba(22, 66, 91, 0.06);
 }
 
 .flow-step {
@@ -137,56 +200,60 @@ body {
     color: #16425b;
     font-weight: 600;
     padding: 0.7rem 1.2rem;
-    border-radius: 8px;
-    box-shadow: 0 1px 4px rgba(22, 66, 91, 0.04);
-    transition: background 0.25s, color 0.25s;
+    border-radius: 6px;
+    transition: all 0.3s;
     min-width: 120px;
     text-align: center;
 }
 
 .flow-arrow {
-    font-size: 2rem;
     color: #1e6f99;
+    font-size: 1.5rem;
+    font-weight: bold;
 }
 
 .flow-step.active {
     background: #0ca4a5;
     color: #fff;
-    box-shadow: 0 2px 12px rgba(22, 66, 91, 0.13);
+    transform: translateY(-2px);
 }
 
-@media (max-width: 900px) {
+/* Responsive Design */
+@media (max-width: 1000px) {
     .dashboard-content {
         flex-direction: column;
-        gap: 1.2rem;
     }
-    .ecg-graph-panel, .info-panel {
-        min-width: unset;
-        width: 100%;
-    }
+    
     .dashboard-header {
         flex-direction: column;
         gap: 1rem;
-        padding: 1rem;
+    }
+    
+    .dashboard-header-right {
+        align-items: stretch;
+        width: 100%;
+    }
+    
+    .monitoring-controls {
+        justify-content: center;
     }
 }
 
 @media (max-width: 600px) {
     .form-card {
-        padding: 1.2rem 0.5rem;
+        padding: 1.5rem 1rem;
+        margin: 1rem;
     }
-    #main-container {
-        padding: 0.5rem;
-    }
-    .dashboard-header {
-        padding: 0.7rem;
-    }
-    .ecg-graph-panel, .info-panel {
-        padding: 0.7rem;
-    }
+    
     .flow-step {
-        min-width: 80px;
-        padding: 0.5rem 0.6rem;
-        font-size: 0.95rem;
+        min-width: 100px;
+        padding: 0.5rem;
+        font-size: 0.9rem;
+    }
+    
+    .system-info-bar {
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
     }
 }

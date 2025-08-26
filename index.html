@@ -13,6 +13,12 @@
 </head>
 <body>
     <div id="main-container">
+        <!-- System Info Bar -->
+        <div class="system-info-bar">
+            <span>Last Update: <span id="system-time">2025-08-26 06:46:44</span></span>
+            <span>User: <span id="system-user">Hibecode</span></span>
+        </div>
+
         <!-- Patient Form Page -->
         <section id="patient-form-section">
             <div class="form-card">
@@ -32,26 +38,36 @@
                             <option value="">Select</option>
                             <option value="Male">Male</option>
                             <option value="Female">Female</option>
+                            <option value="Other">Other</option>
                         </select>
                     </label>
                     <label>
                         Patient ID
                         <input type="text" name="patientId" required>
                     </label>
-                    <button type="submit" class="btn-primary">Start Monitoring</button>
+                    <button type="submit" class="btn-primary">Register Patient</button>
                 </form>
             </div>
         </section>
 
-        <!-- ECG Dashboard (hidden until form is submitted) -->
+        <!-- ECG Dashboard -->
         <section id="dashboard-section" style="display: none;">
             <header class="dashboard-header">
-                <div>
-                    <h3>Patient Info</h3>
+                <div class="dashboard-header-left">
+                    <h3>Patient Information</h3>
                     <p id="patient-info"></p>
                 </div>
-                <button id="download-report" class="btn-secondary">Download Report (PDF)</button>
+                <div class="dashboard-header-right">
+                    <div class="monitoring-controls">
+                        <button id="start-monitoring" class="btn-primary">Start Monitoring</button>
+                        <button id="stop-monitoring" class="btn-secondary" disabled>Stop Monitoring</button>
+                    </div>
+                    <button id="download-report" class="btn-secondary">Download Report (PDF)</button>
+                </div>
             </header>
+
+            <div id="connection-status" class="connection-status">Disconnected</div>
+
             <div class="dashboard-content">
                 <div class="ecg-graph-panel">
                     <canvas id="ecg-chart"></canvas>
