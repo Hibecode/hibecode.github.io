@@ -126,7 +126,7 @@ async function fetchLatestECGData() {
     try {
         const response = await fetch(url, {
             headers: {
-                'X-Auth-Token': CONFIG.ubidots.token,
+                'X-Auth-Token': 'BBUS-ZGjQBOrb7CD0wdMYkDxpoS5RtnAPdv',
                 'Accept': 'application/json'
             }
         });
