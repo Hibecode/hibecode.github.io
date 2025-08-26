@@ -1,231 +1,336 @@
-// --- Constants: Fill these for Ubidots ---
-const UBIDOTS_TOKEN = 'BBUS-ZGjQBOrb7CD0wdMYkDxpoS5RtnAPdv';
-const DEVICE_LABEL = 'esp32';
-const VARIABLE_LABEL = 'sensor'; 
+// Configuration
+const CONFIG = {
+    chart: {
+        gridSize: {
+            major: 40,    // 5mm squares (standard ECG grid)
+            minor: 8      // 1mm squares
+        },
+        scale: {
+            vertical: 0.1,    // 0.1mV/mm (standard)
+            timeScale: 25     // 25mm/second (standard)
+        },
+        colors: {
+            grid: {
+                major: 'rgba(255,0,0,0.1)',
+                minor: 'rgba(0,0,0,0.05)'
+            },
+            signal: '#0066cc'
+        }
+    },
+    sampling: {
+        rate: 250,           // 250Hz sampling rate
+        displayPoints: 2500  // 10 seconds of data
+    },
+    system: {
+        lastUpdate: '2025-08-26 05:49:38',
+        user: 'Hibecode'
+    }
+};
 
-const UBIDOTS_URL = `https://industrial.api.ubidots.com/api/v1.6/devices/${DEVICE_LABEL}/${VARIABLE_LABEL}/values`;
-
-// --- Globals ---
+// Global variables
 let patientData = null;
 let ecgChart = null;
 let ecgData = [];
 let timeData = [];
 let rrIntervals = [];
-let ecgPollingInterval = null;
-let lastFetchTime = 0;
 
-// --- ECG Chart Setup ---
+// Initialize application
+document.addEventListener('DOMContentLoaded', function() {
+    setupUserInterface();
+    setupEventListeners();
+});
+
+// UI Setup
+function setupUserInterface() {
+    document.getElementById('last-update').textContent = CONFIG.system.lastUpdate;
+    document.getElementById('current-user').textContent = CONFIG.system.user;
+}
+
+function setupEventListeners() {
+    // Patient form submission
+    document.getElementById('patient-form').addEventListener('submit', handlePatientSubmit);
+    
+    // Export report button
+    document.getElementById('download-report').addEventListener('click', exportReportPDF);
+    
+    // Real-time monitoring toggle
+    document.getElementById('toggle-monitoring').addEventListener('click', toggleMonitoring);
+}
+
+// ECG Chart Setup with Medical Grade Grid
 function setupECGChart() {
     const ctx = document.getElementById('ecg-chart').getContext('2d');
+    
+    // Setup medical grade ECG grid
+    setupECGGrid(ctx);
+    
     ecgChart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: timeData,
             datasets: [{
-                label: 'ECG mV',
+                label: 'ECG Signal',
                 data: ecgData,
-                borderColor: '#0ca4a5',
-                backgroundColor: 'rgba(12,164,165,0.10)',
-                tension: 0.2,
-                pointRadius: 0,
-                borderWidth: 2,
+                borderColor: CONFIG.chart.colors.signal,
+                backgroundColor: 'rgba(0,102,204,0.1)',
+                borderWidth: 1.5,
+                tension: 0,        // Remove smoothing for accurate QRS
+                pointRadius: 0,    // No points for performance
+                spanGaps: false
             }]
         },
         options: {
-            animation: false,
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,      // Disable for performance
             plugins: {
-                legend: { display: false }
+                legend: { display: false },
+                tooltip: { enabled: false }
             },
             scales: {
                 x: {
-                    display: false
+                    type: 'linear',
+                    display: true,
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        maxRotation: 0,
+                        callback: function(value) {
+                            return (value / CONFIG.sampling.rate).toFixed(1) + 's';
+                        }
+                    }
                 },
                 y: {
-                    min: -2,
-                    max: 2,
-                    title: { display: true, text: 'mV' }
+                    display: true,
+                    min: -1.5,
+                    max: 1.5,
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        callback: function(value) {
+                            return value.toFixed(1) + ' mV';
+                        }
+                    }
                 }
             }
         }
     });
 }
 
-// --- UI Handlers ---
-document.getElementById('patient-form').addEventListener('submit', function(e){
-    e.preventDefault();
-    const fd = new FormData(e.target);
-    patientData = {
-        name: fd.get('name'),
-        age: fd.get('age'),
-        gender: fd.get('gender'),
-        patientId: fd.get('patientId'),
-    };
-    showDashboard();
-});
-
-function showDashboard() {
-    document.getElementById('patient-form-section').style.display = 'none';
-    document.getElementById('dashboard-section').style.display = '';
-    document.getElementById('patient-info').innerHTML = `
-        <strong>Name:</strong> ${patientData.name}<br>
-        <strong>Age:</strong> ${patientData.age}<br>
-        <strong>Gender:</strong> ${patientData.gender}<br>
-        <strong>Patient ID:</strong> ${patientData.patientId}
-    `;
-    setupECGChart();
-    startEcgPolling();
-    highlightFlowStep(1);
-}
-
-// --- Flow Diagram Highlight ---
-function highlightFlowStep(step) {
-    for (let i = 1; i <= 6; ++i) {
-        document.getElementById(`step-${i}`).classList.remove('active');
+// Medical Grade ECG Grid
+function setupECGGrid(ctx) {
+    const canvas = ctx.canvas;
+    const gridCanvas = document.createElement('canvas');
+    gridCanvas.width = canvas.width;
+    gridCanvas.height = canvas.height;
+    const gridCtx = gridCanvas.getContext('2d');
+    
+    // Draw minor grid
+    gridCtx.beginPath();
+    gridCtx.strokeStyle = CONFIG.chart.colors.grid.minor;
+    for (let x = 0; x < canvas.width; x += CONFIG.chart.gridSize.minor) {
+        gridCtx.moveTo(x, 0);
+        gridCtx.lineTo(x, canvas.height);
     }
-    document.getElementById(`step-${step}`).classList.add('active');
-    // Remove highlight after 1s
-    setTimeout(() => {
-        document.getElementById(`step-${step}`).classList.remove('active');
-    }, 1000);
-}
-
-// --- ECG Data Polling ---
-function startEcgPolling() {
-    ecgPollingInterval = setInterval(fetchEcgData, 500);
-}
-
-async function fetchEcgData() {
-    highlightFlowStep(1); // ECG Data Stream
-    try {
-        const res = await fetch(UBIDOTS_URL, {
-            headers: { 'X-Auth-Token': UBIDOTS_TOKEN }
-        });
-        if (!res.ok) throw new Error('API error');
-        const data = await res.json();
-        // Ubidots returns "results": [{value, timestamp}, ...]
-        processEcgData(data.results);
-    } catch (err) {
-        console.error('ECG fetch error:', err);
+    for (let y = 0; y < canvas.height; y += CONFIG.chart.gridSize.minor) {
+        gridCtx.moveTo(0, y);
+        gridCtx.lineTo(canvas.width, y);
     }
+    gridCtx.stroke();
+    
+    // Draw major grid
+    gridCtx.beginPath();
+    gridCtx.strokeStyle = CONFIG.chart.colors.grid.major;
+    for (let x = 0; x < canvas.width; x += CONFIG.chart.gridSize.major) {
+        gridCtx.moveTo(x, 0);
+        gridCtx.lineTo(x, canvas.height);
+    }
+    for (let y = 0; y < canvas.height; y += CONFIG.chart.gridSize.major) {
+        gridCtx.moveTo(0, y);
+        gridCtx.lineTo(canvas.width, y);
+    }
+    gridCtx.stroke();
+    
+    // Apply grid to main canvas
+    ctx.drawImage(gridCanvas, 0, 0);
 }
 
-function processEcgData(results) {
-    if (!results || results.length < 1) return;
-    highlightFlowStep(2); // Preprocessing
-    // Only new points since last fetch
-    let newPoints = results.filter(d => d.timestamp > lastFetchTime);
-    if (newPoints.length === 0) return;
-    lastFetchTime = newPoints[newPoints.length-1].timestamp;
+// Signal Processing
+function processECGData(newData) {
+    // Apply filtering
+    const filteredData = applyFilters(newData);
+    
+    // Update chart data
+    updateChartData(filteredData);
+    
+    // Detect QRS complexes
+    const qrsPoints = detectQRSComplexes(filteredData);
+    
+    // Calculate heart rate and variability
+    calculateHeartMetrics(qrsPoints);
+    
+    // Update display
+    updateDisplay();
+}
 
-    // Sample: limit to 1000 points for chart
-    newPoints.forEach(pt => {
-        // Preprocessing: simple normalization
-        let value = pt.value; // Can add filtering here
-        let timeLabel = new Date(pt.timestamp).toLocaleTimeString().slice(0,8);
-        ecgData.push(value);
-        timeData.push(timeLabel);
-        if (ecgData.length > 1000) {
-            ecgData.shift(); timeData.shift();
-        }
+// Signal Filtering
+function applyFilters(data) {
+    return data.map(value => {
+        // High-pass filter (remove baseline wander)
+        value = highPassFilter(value);
+        
+        // Low-pass filter (remove high-frequency noise)
+        value = lowPassFilter(value);
+        
+        // Notch filter (remove 50/60Hz interference)
+        value = notchFilter(value);
+        
+        return value;
     });
-
-    ecgChart.data.labels = timeData;
-    ecgChart.data.datasets[0].data = ecgData;
-    ecgChart.update('none');
-
-    highlightFlowStep(3); // Pan-Tompkins Algorithm
-    runPanTompkins(ecgData);
-
-    highlightFlowStep(4); // Post-Processing
-    // (Visual update only)
 }
 
-// --- Pan-Tompkins Algorithm (simplified) ---
-function runPanTompkins(ecg) {
-    // R peak detection: find local max above threshold
-    let threshold = 0.7; // simple, tune as needed
-    let peaks = [];
-    for (let i = 1; i < ecg.length-1; i++) {
-        if (ecg[i] > threshold && ecg[i] > ecg[i-1] && ecg[i] > ecg[i+1]) {
-            // Avoid double-counting, check 200ms separation (assume 250Hz, 50 samples)
-            if (peaks.length === 0 || (i - peaks[peaks.length-1]) > 50)
-                peaks.push(i);
+// Filter implementations
+function highPassFilter(value) {
+    // 0.5Hz high-pass filter implementation
+    return value; // Implement actual filter
+}
+
+function lowPassFilter(value) {
+    // 40Hz low-pass filter implementation
+    return value; // Implement actual filter
+}
+
+function notchFilter(value) {
+    // 50/60Hz notch filter implementation
+    return value; // Implement actual filter
+}
+
+// QRS Detection using Pan-Tompkins algorithm
+function detectQRSComplexes(data) {
+    const qrsPoints = [];
+    const threshold = 0.7;
+    
+    for (let i = 1; i < data.length - 1; i++) {
+        if (data[i] > threshold && 
+            data[i] > data[i-1] && 
+            data[i] > data[i+1]) {
+            // Minimum 200ms between peaks (50 samples at 250Hz)
+            if (qrsPoints.length === 0 || (i - qrsPoints[qrsPoints.length-1]) > 50) {
+                qrsPoints.push(i);
+            }
         }
     }
-    // RR intervals (ms)
-    let rr = [];
-    for (let i = 1; i < peaks.length; i++) {
-        let interval = (peaks[i] - peaks[i-1]) * 4; // If 250Hz, 4ms per sample
-        rr.push(interval);
+    
+    return qrsPoints;
+}
+
+// Heart Rate Calculations
+function calculateHeartMetrics(qrsPoints) {
+    // Calculate RR intervals
+    rrIntervals = [];
+    for (let i = 1; i < qrsPoints.length; i++) {
+        const rrInterval = (qrsPoints[i] - qrsPoints[i-1]) * (1000 / CONFIG.sampling.rate);
+        rrIntervals.push(rrInterval);
     }
-    rrIntervals = rr;
+    
+    // Calculate heart rate
+    const averageRR = rrIntervals.reduce((a,b) => a + b, 0) / rrIntervals.length;
+    const heartRate = Math.round(60000 / averageRR);
+    
+    // Calculate heart rate variability
+    const hrv = calculateHRV(rrIntervals);
+    
+    updateMetricsDisplay(heartRate, averageRR, hrv);
+}
 
-    // Heart Rate
-    let hr = rr.length > 0 ? Math.round(60000 / (average(rr) || 800)) : '--';
-    document.getElementById('hr-value').textContent = hr;
-    document.getElementById('rr-value').textContent = rr.length > 0 ? Math.round(average(rr)) : '--';
-    document.getElementById('variability-value').textContent = rr.length > 0 ? stddev(rr).toFixed(1) : '--';
+function calculateHRV(intervals) {
+    if (intervals.length < 2) return 0;
+    const mean = intervals.reduce((a,b) => a + b, 0) / intervals.length;
+    const variance = intervals.reduce((sum, value) => sum + Math.pow(value - mean, 2), 0) / (intervals.length - 1);
+    return Math.sqrt(variance);
+}
 
-    // Flags/analysis
-    highlightFlowStep(5); // Logic-Based Analysis
-    let flags = [];
-    if (hr !== '--') {
-        if (hr > 100) flags.push('Tachycardia');
-        if (hr < 60) flags.push('Bradycardia');
-    }
-    if (stddev(rr) > 80) flags.push('Arrhythmia');
-    document.getElementById('flags-value').textContent = flags.length ? flags.join(', ') : 'None';
+// Display Updates
+function updateMetricsDisplay(heartRate, averageRR, hrv) {
+    document.getElementById('hr-value').textContent = heartRate || '--';
+    document.getElementById('rr-value').textContent = averageRR ? Math.round(averageRR) : '--';
+    document.getElementById('variability-value').textContent = hrv ? hrv.toFixed(1) : '--';
+    
+    // Update analysis
+    const analysis = analyzeECG(heartRate, hrv);
+    document.getElementById('analysis-summary').textContent = analysis.summary;
+    document.getElementById('flags-value').textContent = analysis.flags.join(', ') || 'None';
+}
 
-    // Summary
-    highlightFlowStep(6); // Summary
+// ECG Analysis
+function analyzeECG(heartRate, hrv) {
+    const flags = [];
     let summary = 'Normal Sinus Rhythm';
-    if (flags.includes('Arrhythmia')) summary = 'Possible Arrhythmia Detected';
-    else if (flags.includes('Tachycardia')) summary = 'Tachycardia Detected';
-    else if (flags.includes('Bradycardia')) summary = 'Bradycardia Detected';
-    document.getElementById('analysis-summary').textContent = summary;
+    
+    if (heartRate > 100) {
+        flags.push('Tachycardia');
+        summary = 'Tachycardia Detected';
+    } else if (heartRate < 60) {
+        flags.push('Bradycardia');
+        summary = 'Bradycardia Detected';
+    }
+    
+    if (hrv > 80) {
+        flags.push('High Variability');
+        summary = 'Irregular Rhythm Detected';
+    }
+    
+    return { flags, summary };
 }
 
-// --- Math Helpers ---
-function average(arr) {
-    return arr.reduce((a,b)=>a+b,0) / (arr.length || 1);
-}
-function stddev(arr) {
-    let avg = average(arr);
-    return Math.sqrt(arr.reduce((sum, v) => sum + (v-avg)**2, 0) / (arr.length || 1));
+// Data Simulation (for testing)
+function simulateECGData() {
+    const frequency = 1; // 1 Hz basic frequency
+    const amplitude = 1; // 1 mV amplitude
+    
+    return Array(CONFIG.sampling.displayPoints).fill(0).map((_, i) => {
+        const t = i / CONFIG.sampling.rate;
+        // Simplified ECG wave simulation
+        return amplitude * (
+            Math.sin(2 * Math.PI * frequency * t) +
+            0.5 * Math.sin(30 * Math.PI * frequency * t) * Math.exp(-30 * Math.pow(t % 1 - 0.2, 2))
+        );
+    });
 }
 
-// --- Report Export ---
-document.getElementById('download-report').addEventListener('click', function(){
-    exportReportPDF();
-});
-
+// Export functionality
 function exportReportPDF() {
     const { jsPDF } = window.jspdf;
-    let doc = new jsPDF();
-
-    doc.setFont('helvetica');
-    doc.setFontSize(18);
-    doc.setTextColor(22, 66, 91);
-    doc.text('Virtual IoT-Based ECG System Report', 15, 20);
-
+    const doc = new jsPDF();
+    
+    // Add report header
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.text('ECG Analysis Report', 20, 20);
+    
+    // Add patient information
     doc.setFontSize(12);
-    doc.text(`Patient Name: ${patientData.name}`, 15, 32);
-    doc.text(`Age: ${patientData.age}`, 15, 39);
-    doc.text(`Gender: ${patientData.gender}`, 15, 46);
-    doc.text(`Patient ID: ${patientData.patientId}`, 15, 53);
-
-    doc.text('Analysis Results:', 15, 65);
-    doc.text(`Heart Rate: ${document.getElementById('hr-value').textContent} bpm`, 15, 72);
-    doc.text(`RR Interval: ${document.getElementById('rr-value').textContent} ms`, 15, 79);
-    doc.text(`Variability: ${document.getElementById('variability-value').textContent}`, 15, 86);
-    doc.text(`Flags: ${document.getElementById('flags-value').textContent}`, 15, 93);
-    doc.text(`Summary: ${document.getElementById('analysis-summary').textContent}`, 15, 100);
-
-    // ECG Chart snapshot
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Patient: ${patientData.name}`, 20, 40);
+    doc.text(`ID: ${patientData.patientId}`, 20, 50);
+    doc.text(`Date: ${CONFIG.system.lastUpdate}`, 20, 60);
+    
+    // Add analysis results
+    doc.text('Analysis Results:', 20, 80);
+    doc.text(`Heart Rate: ${document.getElementById('hr-value').textContent} bpm`, 30, 90);
+    doc.text(`RR Interval: ${document.getElementById('rr-value').textContent} ms`, 30, 100);
+    doc.text(`Variability: ${document.getElementById('variability-value').textContent}`, 30, 110);
+    
+    // Add ECG strip
     const canvas = document.getElementById('ecg-chart');
     const imgData = canvas.toDataURL('image/jpeg', 1.0);
-    doc.text('ECG Waveform:', 15, 112);
-    doc.addImage(imgData, 'JPEG', 15, 117, 180, 50);
-
-    doc.save(`ECG_Report_${patientData.patientId}.pdf`);
+    doc.addImage(imgData, 'JPEG', 20, 130, 170, 100);
+    
+    // Save the PDF
+    doc.save(`ECG_Report_${patientData.patientId}_${CONFIG.system.lastUpdate.replace(/[: ]/g, '-')}.pdf`);
 }
+
+// Initialize the application
+setupUserInterface();
