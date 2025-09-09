@@ -78,9 +78,7 @@
                             title: { display: true, text: 'Time' }
                         },
                         y: {
-                            title: { display: true, text: 'Amplitude' },
-                            suggestedMin: -10, // Adjust based on expected ecg_filtered range
-                            suggestedMax: 10   // Adjust based on expected ecg_filtered range
+                            title: { display: true, text: 'Amplitude' }
                         }
                     }
                 }
@@ -91,32 +89,24 @@
                 const response = await fetch(`${BASE_URL}${DEVICE_LABEL}/${VARIABLES[variable]}/values?page_size=1`, {
                     headers: { 'X-Auth-Token': TOKEN }
                 });
-                if (!response.ok) {
-                    console.error(`Failed to fetch ${variable}: ${response.status}`);
-                    return null;
-                }
+                if (!response.ok) return null;
                 const data = await response.json();
-                console.log(`${variable} last value:`, data.results[0]); // Debug log
                 return data.results[0] ?? null;
             } catch (e) {
-                console.error(`Error fetching ${variable}:`, e);
+                console.error(e);
                 return null;
             }
         }
-        async function fetchSeries(variable, count = 100) { // Increased to 100 points
+        async function fetchSeries(variable, count = 50) {
             try {
                 const response = await fetch(`${BASE_URL}${DEVICE_LABEL}/${VARIABLES[variable]}/values?page_size=${count}&sort=desc`, {
                     headers: { 'X-Auth-Token': TOKEN }
                 });
-                if (!response.ok) {
-                    console.error(`Failed to fetch ${variable} series: ${response.status}`);
-                    return [];
-                }
+                if (!response.ok) return [];
                 const data = await response.json();
-                console.log(`${variable} series:`, data.results); // Debug log
                 return data.results.reverse(); // Oldest to newest
             } catch (e) {
-                console.error(`Error fetching ${variable} series:`, e);
+                console.error(e);
                 return [];
             }
         }
@@ -130,10 +120,9 @@
         }
         async function updateDashboard() {
             // Update chart with Pan-Tompkins wave (ecg_filtered)
-            const series = await fetchSeries('ecg_filtered', 100);
+            const series = await fetchSeries('ecg_filtered', 50);
             const labels = series.map(dot => new Date(dot.timestamp).toLocaleTimeString());
             const values = series.map(dot => dot.value);
-            console.log('ECG Filtered Values:', values); // Debug log
             ecgChart.data.labels = labels;
             ecgChart.data.datasets[0].data = values;
             ecgChart.update();
@@ -160,7 +149,7 @@
         // Initialize
         initChart();
         updateDashboard();
-        setInterval(updateDashboard, 2000); // Update every 2 seconds
+        setInterval(updateDashboard, 2000); // Update every 2 seconds to match Ubidots update interval
         document.getElementById('download-btn').addEventListener('click', downloadPDF);
     </script>
 </body>
