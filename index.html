@@ -165,14 +165,10 @@
     
     <div id="dashboard" class="dashboard">
         <div class="header">
-            <h1>Enhanced Pan-Tompkins ECG Monitor</h1>
+            <h1>ECG Dashboard</h1>
             <p>Real-time ECG Processing with Advanced QRS Detection Algorithm</p>
         </div>
         
-        <div class="algorithm-info">
-            <h4>📊 Pan-Tompkins Algorithm Status</h4>
-            <p>5-Stage Processing: Bandpass Filter → Derivative → Squaring → Integration → Peak Detection</p>
-        </div>
         
         <div class="chart-container">
             <canvas id="ecgChart"></canvas>
@@ -197,11 +193,6 @@
                 <div class="data-status" id="hrv-status">Loading...</div>
             </div>
             
-            <div class="data-item">
-                <h3>📈 Processed Signal</h3>
-                <div class="data-value" id="processed-signal">--</div>
-                <div class="data-status">Pan-Tompkins Output</div>
-            </div>
         </div>
         
         <div class="control-panel">
@@ -407,9 +398,9 @@
                 document.getElementById('hrv-rmssd').textContent = 
                     hrv ? `${hrv.toFixed(2)} ms` : '--';
                 
-                const hrvStatusElement = document.getElementById('hrv-status');
-                hrvStatusElement.textContent = hrvStatus.text;
-                hrvStatusElement.className = `data-status ${hrvStatus.class}`;
+                //const hrvStatusElement = document.getElementById('hrv-status');
+                //hrvStatusElement.textContent = hrvStatus.text;
+                //hrvStatusElement.className = `data-status ${hrvStatus.class}`;
                 
                 // Update connection status
                 updateConnectionStatus(true);
