@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ECG Monitoring Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px; }
+        .dashboard { max-width: 1200px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        .chart-container { width: 100%; height: 400px; margin-bottom: 20px; }
+        .data-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
+        .data-item { padding: 15px; border: 1px solid #ddd; border-radius: 4px; text-align: center; background: #fff; }
+        #heart-rate { font-size: 28px; font-weight: bold; }
+        #hr-status { font-size: 18px; color: #555; }
+        #download-btn { display: block; margin: 20px auto; padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        #download-btn:hover { background: #0056b3; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+    <div id="dashboard" class="dashboard">
+        <h1>ECG Monitoring Dashboard</h1>
+        <div class="chart-container">
+            <canvas id="ecgChart"></canvas>
+        </div>
+        <div class="data-grid">
+            <div class="data-item">
+                <h3>ECG Raw</h3>
+                <p id="ecg-raw">Loading...</p>
+            </div>
+            <div class="data-item">
+                <h3>Heart Rate (BPM)</h3>
+                <p id="heart-rate">Loading...</p>
+                <p id="hr-status">Status: Loading...</p>
+            </div>
+            <div class="data-item">
+                <h3>QRS Detected</h3>
+                <p id="qrs-detected">Loading...</p>
+            </div>
+            <div class="data-item">
+                <h3>RR Interval (ms)</h3>
+                <p id="rr-interval">Loading...</p>
+            </div>
+        </div>
+    </div>
+    <button id="download-btn">Download as PDF</button>
+    <script>
+        const TOKEN = 'BBUS-ZGjQBOrb7CD0wdMYkDxpoS5RtnAPdv';
+        const DEVICE_LABEL = 'esp32';
+        const BASE_URL = 'https://industrial.api.ubidots.com/api/v1.6/devices/';
+        const VARIABLES = {
+            ecg_raw: 'ecg_raw',
+            ecg_filtered: 'ecg_filtered',
+            heart_rate: 'heart_rate',
+            qrs_detected: 'qrs_detected',
+            rr_interval: 'rr_interval'
+        };
+        let ecgChart;
+        function initChart() {
+            const ctx = document.getElementById('ecgChart').getContext('2d');
+            ecgChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Pan-Tompkins Wave',
+                        data: [],
+                        borderColor: 'rgb(75, 192, 192)',
+                        tension: 0.1,
+                        fill: false
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Time' }
+                        },
+                        y: {
+                            title: { display: true, text: 'Amplitude' },
+                            suggestedMin: -10, // Adjust based on expected ecg_filtered range
+                            suggestedMax: 10   // Adjust based on expected ecg_filtered range
+                        }
+                    }
+                }
+            });
+        }
+        async function fetchLastValue(variable) {
+            try {
+                const response = await fetch(`${BASE_URL}${DEVICE_LABEL}/${VARIABLES[variable]}/values?page_size=1`, {
+                    headers: { 'X-Auth-Token': TOKEN }
+                });
+                if (!response.ok) {
+                    console.error(`Failed to fetch ${variable}: ${response.status}`);
+                    return null;
+                }
+                const data = await response.json();
+                console.log(`${variable} last value:`, data.results[0]); // Debug log
+                return data.results[0] ?? null;
+            } catch (e) {
+                console.error(`Error fetching ${variable}:`, e);
+                return null;
+            }
+        }
+        async function fetchSeries(variable, count = 100) { // Increased to 100 points
+            try {
+                const response = await fetch(`${BASE_URL}${DEVICE_LABEL}/${VARIABLES[variable]}/values?page_size=${count}&sort=desc`, {
+                    headers: { 'X-Auth-Token': TOKEN }
+                });
+                if (!response.ok) {
+                    console.error(`Failed to fetch ${variable} series: ${response.status}`);
+                    return [];
+                }
+                const data = await response.json();
+                console.log(`${variable} series:`, data.results); // Debug log
+                return data.results.reverse(); // Oldest to newest
+            } catch (e) {
+                console.error(`Error fetching ${variable} series:`, e);
+                return [];
+            }
+        }
+        function getHeartRateStatus(hr) {
+            if (!hr) return 'NO DATA';
+            if (hr < 60) return 'BRADYCARDIA';
+            if (hr > 105) return 'SEVERE TACHYCARDIA';
+            if (hr >= 95 && hr <= 105) return 'MODERATE TACHYCARDIA';
+            if (hr >= 85 && hr < 95) return 'MILD TACHYCARDIA';
+            return 'NORMAL';
+        }
+        async function updateDashboard() {
+            // Update chart with Pan-Tompkins wave (ecg_filtered)
+            const series = await fetchSeries('ecg_filtered', 100);
+            const labels = series.map(dot => new Date(dot.timestamp).toLocaleTimeString());
+            const values = series.map(dot => dot.value);
+            console.log('ECG Filtered Values:', values); // Debug log
+            ecgChart.data.labels = labels;
+            ecgChart.data.datasets[0].data = values;
+            ecgChart.update();
+            // Update other data
+            const ecgRawObj = await fetchLastValue('ecg_raw');
+            const ecgRaw = ecgRawObj?.value ?? null;
+            document.getElementById('ecg-raw').textContent = ecgRaw !== null ? ecgRaw.toFixed(2) : 'N/A';
+            const heartRateObj = await fetchLastValue('heart_rate');
+            const heartRate = heartRateObj?.value ?? null;
+            const hrStatus = heartRateObj?.context?.status ?? getHeartRateStatus(heartRate);
+            document.getElementById('heart-rate').textContent = heartRate !== null ? heartRate.toFixed(1) : 'N/A';
+            document.getElementById('hr-status').textContent = `Status: ${hrStatus}`;
+            const qrsObj = await fetchLastValue('qrs_detected');
+            const qrs = qrsObj?.value ?? null;
+            document.getElementById('qrs-detected').textContent = qrs !== null ? (qrs === 1 ? 'Yes' : 'No') : 'N/A';
+            const rrObj = await fetchLastValue('rr_interval');
+            const rr = rrObj?.value ?? null;
+            document.getElementById('rr-interval').textContent = rr !== null ? rr.toFixed(0) : 'N/A';
+        }
+        function downloadPDF() {
+            const element = document.getElementById('dashboard');
+            html2pdf().from(element).save('ecg_dashboard.pdf');
+        }
+        // Initialize
+        initChart();
+        updateDashboard();
+        setInterval(updateDashboard, 2000); // Update every 2 seconds
+        document.getElementById('download-btn').addEventListener('click', downloadPDF);
+    </script>
+</body>
+</html>

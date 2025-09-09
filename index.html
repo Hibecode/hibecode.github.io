@@ -2,60 +2,237 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>ECG Monitoring Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Pan-Tompkins ECG Dashboard</title>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px; }
-        .dashboard { max-width: 1200px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        .chart-container { width: 100%; height: 400px; margin-bottom: 20px; }
-        .data-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; }
-        .data-item { padding: 15px; border: 1px solid #ddd; border-radius: 4px; text-align: center; background: #fff; }
-        #heart-rate { font-size: 28px; font-weight: bold; }
-        #hr-status { font-size: 18px; color: #555; }
-        #download-btn { display: block; margin: 20px auto; padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        #download-btn:hover { background: #0056b3; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            margin: 0; 
+            padding: 20px; 
+            min-height: 100vh;
+        }
+        
+        .dashboard { 
+            max-width: 1200px; 
+            margin: auto; 
+            background: rgba(255, 255, 255, 0.95); 
+            padding: 30px; 
+            border-radius: 15px; 
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 { 
+            color: #2c3e50; 
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+        
+        .header p {
+            color: #7f8c8d;
+            font-size: 1.1em;
+            margin: 10px 0;
+        }
+        
+        .chart-container { 
+            width: 100%; 
+            height: 450px; 
+            margin-bottom: 30px; 
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        }
+        
+        .data-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); 
+            gap: 20px; 
+            margin-bottom: 30px;
+        }
+        
+        .data-item { 
+            padding: 25px; 
+            border: none;
+            border-radius: 12px; 
+            text-align: center; 
+            background: linear-gradient(145deg, #ffffff, #f0f0f0);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .data-item:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 25px rgba(0,0,0,0.15);
+        }
+        
+        .data-item h3 {
+            color: #34495e;
+            margin: 0 0 15px 0;
+            font-size: 1.2em;
+            font-weight: 600;
+        }
+        
+        .data-value { 
+            font-size: 2.2em; 
+            font-weight: bold; 
+            margin: 10px 0;
+            color: #2980b9;
+        }
+        
+        .data-status { 
+            font-size: 1em; 
+            color: #7f8c8d;
+            margin: 5px 0;
+        }
+        
+        .status-normal { color: #27ae60; }
+        .status-warning { color: #f39c12; }
+        .status-danger { color: #e74c3c; }
+        
+        .control-panel {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .btn { 
+            padding: 12px 25px; 
+            background: linear-gradient(145deg, #3498db, #2980b9); 
+            color: white; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-size: 1em;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+        
+        .btn:hover { 
+            background: linear-gradient(145deg, #2980b9, #21618c);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+        }
+        
+        .connection-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 15px;
+            border-radius: 20px;
+            color: white;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        
+        .connected { background: #27ae60; }
+        .disconnected { background: #e74c3c; }
+        
+        .algorithm-info {
+            background: #ecf0f1;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .algorithm-info h4 {
+            margin: 0 0 10px 0;
+            color: #2c3e50;
+        }
+        
+        @media (max-width: 768px) {
+            .dashboard { padding: 20px; }
+            .header h1 { font-size: 2em; }
+            .data-grid { grid-template-columns: 1fr; }
+            .control-panel { flex-direction: column; align-items: center; }
+        }
     </style>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
+    <div class="connection-status" id="connectionStatus">Connecting...</div>
+    
     <div id="dashboard" class="dashboard">
-        <h1>ECG Monitoring Dashboard</h1>
+        <div class="header">
+            <h1>Enhanced Pan-Tompkins ECG Monitor</h1>
+            <p>Real-time ECG Processing with Advanced QRS Detection Algorithm</p>
+        </div>
+        
+        <div class="algorithm-info">
+            <h4>📊 Pan-Tompkins Algorithm Status</h4>
+            <p>5-Stage Processing: Bandpass Filter → Derivative → Squaring → Integration → Peak Detection</p>
+        </div>
+        
         <div class="chart-container">
             <canvas id="ecgChart"></canvas>
         </div>
+        
         <div class="data-grid">
             <div class="data-item">
-                <h3>ECG Raw</h3>
-                <p id="ecg-raw">Loading...</p>
+                <h3>💓 Heart Rate</h3>
+                <div class="data-value" id="heart-rate">--</div>
+                <div class="data-status" id="hr-status">Loading...</div>
             </div>
+            
             <div class="data-item">
-                <h3>Heart Rate (BPM)</h3>
-                <p id="heart-rate">Loading...</p>
-                <p id="hr-status">Status: Loading...</p>
+                <h3>⏱️ RR Interval</h3>
+                <div class="data-value" id="rr-interval">--</div>
+                <div class="data-status">milliseconds</div>
             </div>
+            
             <div class="data-item">
-                <h3>QRS Detected</h3>
-                <p id="qrs-detected">Loading...</p>
+                <h3>🧠 HRV (RMSSD)</h3>
+                <div class="data-value" id="hrv-rmssd">--</div>
+                <div class="data-status" id="hrv-status">Loading...</div>
             </div>
+            
             <div class="data-item">
-                <h3>RR Interval (ms)</h3>
-                <p id="rr-interval">Loading...</p>
+                <h3>📈 Processed Signal</h3>
+                <div class="data-value" id="processed-signal">--</div>
+                <div class="data-status">Pan-Tompkins Output</div>
             </div>
         </div>
+        
+        <div class="control-panel">
+            <button class="btn" onclick="downloadPDF()">📄 Download PDF Report</button>
+            <button class="btn" onclick="resetChart()">🔄 Reset Chart</button>
+            <button class="btn" onclick="toggleUpdates()">⏸️ Pause Updates</button>
+        </div>
     </div>
-    <button id="download-btn">Download as PDF</button>
+
     <script>
-        const TOKEN = 'BBUS-ZGjQBOrb7CD0wdMYkDxpoS5RtnAPdv';
-        const DEVICE_LABEL = 'esp32';
-        const BASE_URL = 'https://industrial.api.ubidots.com/api/v1.6/devices/';
-        const VARIABLES = {
-            ecg_raw: 'ecg_raw',
-            ecg_filtered: 'ecg_filtered',
-            heart_rate: 'heart_rate',
-            qrs_detected: 'qrs_detected',
-            rr_interval: 'rr_interval'
+        // Configuration matching the Arduino code
+        const CONFIG = {
+            TOKEN: 'BBUS-ZGjQBOrb7CD0wdMYkDxpoS5RtnAPdv',
+            DEVICE_LABEL: 'esp32',
+            BASE_URL: 'https://industrial.api.ubidots.com/api/v1.6/devices/',
+            VARIABLES: {
+                ecg_processed_pt: 'ecg_processed_pt',  // Pan-Tompkins processed signal
+                heart_rate: 'heart_rate',
+                hrv_rmssd: 'hrv_rmssd',
+                rr_interval: 'rr_interval'
+            },
+            UPDATE_INTERVAL: 2000,  // Match Arduino's 2-second update
+            CHART_POINTS: 150       // Show more data points for better visualization
         };
+        
         let ecgChart;
+        let updateInterval;
+        let isPaused = false;
+        let connectionAttempts = 0;
+        
+        // Initialize Chart with Pan-Tompkins styling
         function initChart() {
             const ctx = document.getElementById('ecgChart').getContext('2d');
             ecgChart = new Chart(ctx, {
@@ -63,105 +240,281 @@
                 data: {
                     labels: [],
                     datasets: [{
-                        label: 'Pan-Tompkins Wave',
+                        label: 'Pan-Tompkins Processed ECG',
                         data: [],
-                        borderColor: 'rgb(75, 192, 192)',
-                        tension: 0.1,
-                        fill: false
+                        borderColor: '#e74c3c',
+                        backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                        tension: 0.2,
+                        fill: true,
+                        pointRadius: 0,
+                        borderWidth: 2
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    animation: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        },
+                        title: {
+                            display: true,
+                            text: 'Real-time Pan-Tompkins Processed Signal',
+                            font: { size: 16, weight: 'bold' }
+                        }
+                    },
                     scales: {
                         x: {
-                            title: { display: true, text: 'Time' }
+                            title: { 
+                                display: true, 
+                                text: 'Time',
+                                font: { weight: 'bold' }
+                            },
+                            grid: { color: 'rgba(0,0,0,0.1)' }
                         },
                         y: {
-                            title: { display: true, text: 'Amplitude' },
-                            suggestedMin: -10, // Adjust based on expected ecg_filtered range
-                            suggestedMax: 10   // Adjust based on expected ecg_filtered range
+                            title: { 
+                                display: true, 
+                                text: 'Processed Amplitude',
+                                font: { weight: 'bold' }
+                            },
+                            grid: { color: 'rgba(0,0,0,0.1)' }
                         }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
                     }
                 }
             });
         }
+        
+        // Fetch data from Ubidots
         async function fetchLastValue(variable) {
             try {
-                const response = await fetch(`${BASE_URL}${DEVICE_LABEL}/${VARIABLES[variable]}/values?page_size=1`, {
-                    headers: { 'X-Auth-Token': TOKEN }
-                });
+                const response = await fetch(
+                    `${CONFIG.BASE_URL}${CONFIG.DEVICE_LABEL}/${CONFIG.VARIABLES[variable]}/values?page_size=1`, 
+                    {
+                        headers: { 'X-Auth-Token': CONFIG.TOKEN }
+                    }
+                );
+                
                 if (!response.ok) {
-                    console.error(`Failed to fetch ${variable}: ${response.status}`);
-                    return null;
+                    throw new Error(`HTTP ${response.status}`);
                 }
+                
                 const data = await response.json();
-                console.log(`${variable} last value:`, data.results[0]); // Debug log
                 return data.results[0] ?? null;
-            } catch (e) {
-                console.error(`Error fetching ${variable}:`, e);
+            } catch (error) {
+                console.error(`Error fetching ${variable}:`, error);
                 return null;
             }
         }
-        async function fetchSeries(variable, count = 100) { // Increased to 100 points
+        
+        async function fetchSeries(variable, count = CONFIG.CHART_POINTS) {
             try {
-                const response = await fetch(`${BASE_URL}${DEVICE_LABEL}/${VARIABLES[variable]}/values?page_size=${count}&sort=desc`, {
-                    headers: { 'X-Auth-Token': TOKEN }
-                });
+                const response = await fetch(
+                    `${CONFIG.BASE_URL}${CONFIG.DEVICE_LABEL}/${CONFIG.VARIABLES[variable]}/values?page_size=${count}&sort=desc`, 
+                    {
+                        headers: { 'X-Auth-Token': CONFIG.TOKEN }
+                    }
+                );
+                
                 if (!response.ok) {
-                    console.error(`Failed to fetch ${variable} series: ${response.status}`);
-                    return [];
+                    throw new Error(`HTTP ${response.status}`);
                 }
+                
                 const data = await response.json();
-                console.log(`${variable} series:`, data.results); // Debug log
                 return data.results.reverse(); // Oldest to newest
-            } catch (e) {
-                console.error(`Error fetching ${variable} series:`, e);
+            } catch (error) {
+                console.error(`Error fetching ${variable} series:`, error);
                 return [];
             }
         }
+        
+        // Status classification functions
         function getHeartRateStatus(hr) {
-            if (!hr) return 'NO DATA';
-            if (hr < 60) return 'BRADYCARDIA';
-            if (hr > 105) return 'SEVERE TACHYCARDIA';
-            if (hr >= 95 && hr <= 105) return 'MODERATE TACHYCARDIA';
-            if (hr >= 85 && hr < 95) return 'MILD TACHYCARDIA';
-            return 'NORMAL';
+            if (!hr || hr === 0) return { text: 'NO DATA', class: '' };
+            if (hr < 60) return { text: 'BRADYCARDIA', class: 'status-warning' };
+            if (hr > 105) return { text: 'SEVERE TACHYCARDIA', class: 'status-danger' };
+            if (hr >= 95 && hr <= 105) return { text: 'MODERATE TACHYCARDIA', class: 'status-warning' };
+            if (hr >= 85 && hr < 95) return { text: 'MILD TACHYCARDIA', class: 'status-warning' };
+            return { text: 'NORMAL', class: 'status-normal' };
         }
+        
+        function getHRVStatus(hrv) {
+            if (!hrv || hrv === 0) return { text: 'NO DATA', class: '' };
+            if (hrv >= 25.0) return { text: 'EXCELLENT', class: 'status-normal' };
+            if (hrv >= 20.0) return { text: 'GOOD', class: 'status-normal' };
+            if (hrv >= 15.0) return { text: 'FAIR', class: 'status-warning' };
+            if (hrv >= 10.0) return { text: 'POOR', class: 'status-warning' };
+            return { text: 'VERY LOW', class: 'status-danger' };
+        }
+        
+        // Update dashboard with real data
         async function updateDashboard() {
-            // Update chart with Pan-Tompkins wave (ecg_filtered)
-            const series = await fetchSeries('ecg_filtered', 100);
-            const labels = series.map(dot => new Date(dot.timestamp).toLocaleTimeString());
-            const values = series.map(dot => dot.value);
-            console.log('ECG Filtered Values:', values); // Debug log
-            ecgChart.data.labels = labels;
-            ecgChart.data.datasets[0].data = values;
-            ecgChart.update();
-            // Update other data
-            const ecgRawObj = await fetchLastValue('ecg_raw');
-            const ecgRaw = ecgRawObj?.value ?? null;
-            document.getElementById('ecg-raw').textContent = ecgRaw !== null ? ecgRaw.toFixed(2) : 'N/A';
-            const heartRateObj = await fetchLastValue('heart_rate');
-            const heartRate = heartRateObj?.value ?? null;
-            const hrStatus = heartRateObj?.context?.status ?? getHeartRateStatus(heartRate);
-            document.getElementById('heart-rate').textContent = heartRate !== null ? heartRate.toFixed(1) : 'N/A';
-            document.getElementById('hr-status').textContent = `Status: ${hrStatus}`;
-            const qrsObj = await fetchLastValue('qrs_detected');
-            const qrs = qrsObj?.value ?? null;
-            document.getElementById('qrs-detected').textContent = qrs !== null ? (qrs === 1 ? 'Yes' : 'No') : 'N/A';
-            const rrObj = await fetchLastValue('rr_interval');
-            const rr = rrObj?.value ?? null;
-            document.getElementById('rr-interval').textContent = rr !== null ? rr.toFixed(0) : 'N/A';
+            try {
+                connectionAttempts++;
+                
+                // Update chart with processed signal
+                const series = await fetchSeries('ecg_processed_pt', CONFIG.CHART_POINTS);
+                if (series.length > 0) {
+                    const labels = series.map(point => 
+                        new Date(point.timestamp).toLocaleTimeString('en-US', { 
+                            hour12: false, 
+                            hour: '2-digit', 
+                            minute: '2-digit', 
+                            second: '2-digit' 
+                        })
+                    );
+                    const values = series.map(point => point.value);
+                    
+                    ecgChart.data.labels = labels;
+                    ecgChart.data.datasets[0].data = values;
+                    ecgChart.update('none');
+                    
+                    // Update current processed signal value
+                    const currentSignal = values[values.length - 1];
+                    document.getElementById('processed-signal').textContent = 
+                        currentSignal ? currentSignal.toFixed(2) : '--';
+                }
+                
+                // Update heart rate
+                const heartRateData = await fetchLastValue('heart_rate');
+                const heartRate = heartRateData?.value ?? null;
+                const hrStatus = getHeartRateStatus(heartRate);
+                
+                document.getElementById('heart-rate').textContent = 
+                    heartRate ? `${heartRate.toFixed(1)} BPM` : '--';
+                
+                const hrStatusElement = document.getElementById('hr-status');
+                hrStatusElement.textContent = hrStatus.text;
+                hrStatusElement.className = `data-status ${hrStatus.class}`;
+                
+                // Update RR interval
+                const rrData = await fetchLastValue('rr_interval');
+                const rrInterval = rrData?.value ?? null;
+                document.getElementById('rr-interval').textContent = 
+                    rrInterval ? `${rrInterval.toFixed(0)} ms` : '--';
+                
+                // Update HRV
+                const hrvData = await fetchLastValue('hrv_rmssd');
+                const hrv = hrvData?.value ?? null;
+                const hrvStatus = getHRVStatus(hrv);
+                
+                document.getElementById('hrv-rmssd').textContent = 
+                    hrv ? `${hrv.toFixed(2)} ms` : '--';
+                
+                const hrvStatusElement = document.getElementById('hrv-status');
+                hrvStatusElement.textContent = hrvStatus.text;
+                hrvStatusElement.className = `data-status ${hrvStatus.class}`;
+                
+                // Update connection status
+                updateConnectionStatus(true);
+                connectionAttempts = 0;
+                
+            } catch (error) {
+                console.error('Dashboard update failed:', error);
+                updateConnectionStatus(false);
+                
+                if (connectionAttempts > 5) {
+                    console.warn('Multiple connection failures detected');
+                }
+            }
         }
+        
+        function updateConnectionStatus(isConnected) {
+            const statusElement = document.getElementById('connectionStatus');
+            if (isConnected) {
+                statusElement.textContent = '🟢 Connected';
+                statusElement.className = 'connection-status connected';
+            } else {
+                statusElement.textContent = '🔴 Disconnected';
+                statusElement.className = 'connection-status disconnected';
+            }
+        }
+        
+        // Control functions
         function downloadPDF() {
             const element = document.getElementById('dashboard');
-            html2pdf().from(element).save('ecg_dashboard.pdf');
+            const opt = {
+                margin: 1,
+                filename: `ECG_Dashboard_${new Date().toISOString().slice(0,10)}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { scale: 2 },
+                jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' }
+            };
+            html2pdf().set(opt).from(element).save();
         }
-        // Initialize
-        initChart();
-        updateDashboard();
-        setInterval(updateDashboard, 2000); // Update every 2 seconds
-        document.getElementById('download-btn').addEventListener('click', downloadPDF);
+        
+        function resetChart() {
+            ecgChart.data.labels = [];
+            ecgChart.data.datasets[0].data = [];
+            ecgChart.update();
+        }
+        
+        function toggleUpdates() {
+            const button = event.target;
+            if (isPaused) {
+                startUpdates();
+                button.textContent = '⏸️ Pause Updates';
+                button.style.background = 'linear-gradient(145deg, #3498db, #2980b9)';
+            } else {
+                stopUpdates();
+                button.textContent = '▶️ Resume Updates';
+                button.style.background = 'linear-gradient(145deg, #27ae60, #229954)';
+            }
+            isPaused = !isPaused;
+        }
+        
+        function startUpdates() {
+            updateInterval = setInterval(updateDashboard, CONFIG.UPDATE_INTERVAL);
+        }
+        
+        function stopUpdates() {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+            }
+        }
+        
+        // Initialize dashboard
+        function init() {
+            console.log('🚀 Enhanced Pan-Tompkins ECG Dashboard Starting...');
+            console.log('📊 Configuration:', CONFIG);
+            
+            initChart();
+            updateDashboard(); // Initial load
+            startUpdates();
+            
+            // Set up keyboard shortcuts
+            document.addEventListener('keydown', function(e) {
+                if (e.ctrlKey && e.key === 's') {
+                    e.preventDefault();
+                    downloadPDF();
+                }
+                if (e.key === ' ') {
+                    e.preventDefault();
+                    toggleUpdates();
+                }
+            });
+            
+            console.log('✅ Dashboard initialized successfully');
+            console.log('💡 Tip: Press Ctrl+S to download PDF, Space to pause/resume');
+        }
+        
+        // Start the application
+        document.addEventListener('DOMContentLoaded', init);
+        
+        // Handle page visibility for performance
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                stopUpdates();
+            } else if (!isPaused) {
+                startUpdates();
+            }
+        });
     </script>
 </body>
 </html>
