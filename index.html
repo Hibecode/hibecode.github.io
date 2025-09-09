@@ -3,90 +3,810 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Virtual IoT-Based ECG System</title>
-    <!-- Chart.js CDN -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- jsPDF CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <!-- CSS -->
-    <link rel="stylesheet" href="style.css">
+    <title>Virtual IoT-Based ECG System Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .dashboard-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #2c5282 0%, #3182ce 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
+
+        .btn {
+            background: rgba(255,255,255,0.2);
+            border: 2px solid white;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 0 5px;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            background: white;
+            color: #2c5282;
+            transform: translateY(-2px);
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .report-header {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8fafc;
+            border-radius: 10px;
+        }
+
+        .patient-info h2 {
+            color: #2d3748;
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            border-left: 4px solid #3182ce;
+        }
+
+        .info-label {
+            font-weight: bold;
+            color: #4a5568;
+        }
+
+        .info-value {
+            color: #2d3748;
+        }
+
+        .status-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .status-indicator {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            margin: 0 auto 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: white;
+        }
+
+        .status-normal { background: #48bb78; }
+        .status-warning { background: #ed8936; }
+        .status-critical { background: #e53e3e; }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            text-align: center;
+            transition: transform 0.3s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #2d3748;
+            margin-bottom: 5px;
+        }
+
+        .metric-label {
+            color: #718096;
+            font-size: 0.9rem;
+        }
+
+        .metric-unit {
+            font-size: 1rem;
+            color: #4a5568;
+        }
+
+        .chart-container {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .chart-title {
+            font-size: 1.3rem;
+            color: #2d3748;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .analysis-section {
+            background: #f7fafc;
+            padding: 25px;
+            border-radius: 10px;
+            border-left: 5px solid #3182ce;
+        }
+
+        .analysis-title {
+            font-size: 1.4rem;
+            color: #2d3748;
+            margin-bottom: 15px;
+        }
+
+        .analysis-text {
+            line-height: 1.6;
+            color: #4a5568;
+        }
+
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            color: #718096;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3182ce;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin-right: 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: #fed7d7;
+            color: #c53030;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #e53e3e;
+        }
+
+        .timestamp {
+            text-align: right;
+            color: #718096;
+            font-size: 0.9rem;
+            margin-top: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .report-header {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .info-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .controls {
+                position: static;
+                margin-top: 20px;
+            }
+        }
+
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            
+            .controls {
+                display: none;
+            }
+            
+            .dashboard-container {
+                box-shadow: none;
+                border-radius: 0;
+            }
+        }
+    </style>
 </head>
 <body>
-    <div id="main-container">
-        <!-- Patient Form Page -->
-        <section id="patient-form-section">
-            <div class="form-card">
-                <h2>Patient Registration</h2>
-                <form id="patient-form">
-                    <label>
-                        Full Name
-                        <input type="text" name="name" required>
-                    </label>
-                    <label>
-                        Age
-                        <input type="number" name="age" required min="0" max="120">
-                    </label>
-                    <label>
-                        Gender
-                        <select name="gender" required>
-                            <option value="">Select</option>
-                            <option value="Male">Male</option>
-                            <option value="Female">Female</option>
-                        </select>
-                    </label>
-                    <label>
-                        Patient ID
-                        <input type="text" name="patientId" required>
-                    </label>
-                    <button type="submit" class="btn-primary">Start Monitoring</button>
-                </form>
+    <div class="dashboard-container" id="dashboard">
+        <div class="header">
+            <div class="controls">
+                <button class="btn" onclick="refreshData()">Refresh Data</button>
+                <button class="btn" onclick="downloadPDF()">Download PDF</button>
             </div>
-        </section>
+            <h1>Virtual IoT-Based ECG System Report</h1>
+            <div class="subtitle">Real-time Cardiac Monitoring Dashboard</div>
+        </div>
 
-        <!-- ECG Dashboard (hidden until form is submitted) -->
-        <section id="dashboard-section" style="display: none;">
-            <header class="dashboard-header">
-                <div>
-                    <h3>Patient Info</h3>
-                    <p id="patient-info"></p>
-                </div>
-                <button id="download-report" class="btn-secondary">Download Report (PDF)</button>
-            </header>
-            <div class="dashboard-content">
-                <div class="ecg-graph-panel">
-                    <canvas id="ecg-chart"></canvas>
-                </div>
-                <div class="info-panel">
-                    <div class="hr-panel">
-                        <h4>Live Analysis</h4>
-                        <p><strong>Heart Rate:</strong> <span id="hr-value">--</span> bpm</p>
-                        <p><strong>RR Interval:</strong> <span id="rr-value">--</span> ms</p>
-                        <p><strong>Variability:</strong> <span id="variability-value">--</span></p>
-                        <p><strong>Flags:</strong> <span id="flags-value">--</span></p>
+        <div class="content">
+            <div class="report-header">
+                <div class="patient-info">
+                    <h2>Patient Information</h2>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <span class="info-label">Name:</span>
+                            <span class="info-value" id="patientName">Ibukunoluwa Okunoye</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Age:</span>
+                            <span class="info-value" id="patientAge">23</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Gender:</span>
+                            <span class="info-value" id="patientGender">Male</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Report Date:</span>
+                            <span class="info-value" id="reportDate"></span>
+                        </div>
                     </div>
-                    <div class="summary-panel">
-                        <h4>Summary</h4>
-                        <div id="analysis-summary">--</div>
+                </div>
+                
+                <div class="status-card">
+                    <div class="status-indicator" id="statusIndicator">
+                        <span id="statusIcon">❤️</span>
                     </div>
+                    <h3 id="overallStatus">Normal</h3>
+                    <p id="statusDescription">Heart rhythm appears normal</p>
                 </div>
             </div>
 
-            <!-- Processing Flow Diagram -->
-            <div class="flow-diagram">
-                <div class="flow-step" id="step-1">ECG Data Stream</div>
-                <div class="flow-arrow">→</div>
-                <div class="flow-step" id="step-2">Preprocessing</div>
-                <div class="flow-arrow">→</div>
-                <div class="flow-step" id="step-3">Pan–Tompkins Algorithm</div>
-                <div class="flow-arrow">→</div>
-                <div class="flow-step" id="step-4">Post-Processing</div>
-                <div class="flow-arrow">→</div>
-                <div class="flow-step" id="step-5">Logic-Based Analysis</div>
-                <div class="flow-arrow">→</div>
-                <div class="flow-step" id="step-6">Summary</div>
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-value" id="heartRateValue">--</div>
+                    <div class="metric-label">Heart Rate <span class="metric-unit">BPM</span></div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="rrIntervalValue">--</div>
+                    <div class="metric-label">RR Interval <span class="metric-unit">ms</span></div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="hrvValue">--</div>
+                    <div class="metric-label">HRV (RMSSD) <span class="metric-unit">ms</span></div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-value" id="qrsCount">--</div>
+                    <div class="metric-label">QRS Detected <span class="metric-unit">count</span></div>
+                </div>
             </div>
-        </section>
+
+            <div class="chart-container">
+                <h3 class="chart-title">ECG Waveform - Pan-Tompkins Processed Signal</h3>
+                <div id="chartLoading" class="loading">
+                    <div class="spinner"></div>
+                    Loading ECG data...
+                </div>
+                <canvas id="ecgChart" style="display: none;"></canvas>
+            </div>
+
+            <div class="chart-container">
+                <h3 class="chart-title">Heart Rate Trend</h3>
+                <canvas id="heartRateChart"></canvas>
+            </div>
+
+            <div class="analysis-section">
+                <h3 class="analysis-title">Analysis Results</h3>
+                <div class="analysis-text" id="analysisResults">
+                    <p><strong>Heart Rate Analysis:</strong> <span id="hrAnalysis">Analyzing...</span></p>
+                    <p><strong>Rhythm Assessment:</strong> <span id="rhythmAnalysis">Analyzing...</span></p>
+                    <p><strong>Clinical Flags:</strong> <span id="clinicalFlags">None detected</span></p>
+                    <p><strong>Summary:</strong> <span id="summaryText">Analysis in progress...</span></p>
+                </div>
+            </div>
+
+            <div class="timestamp">
+                Last Updated: <span id="lastUpdate"></span>
+            </div>
+        </div>
     </div>
-    <script src="script.js"></script>
+
+    <script>
+        // Configuration
+        const CONFIG = {
+            UBIDOTS_TOKEN: 'BBUS-ZGjQBOrb7CD0wdMYkDxpoS5RtnAPdv', // Replace with your actual token
+            DEVICE_LABEL: 'esp32',
+            VARIABLES: {
+                ECG_RAW: 'ecg_raw',
+                ECG_FILTERED: 'ecg_filtered', 
+                HEART_RATE: 'heart_rate',
+                QRS_DETECTED: 'qrs_detected',
+                RR_INTERVAL: 'rr_interval',
+                HRV_RMSSD: 'hrv_rmssd'
+            },
+            UPDATE_INTERVAL: 5000, // 5 seconds
+            DATA_POINTS_LIMIT: 100
+        };
+
+        // Global variables
+        let ecgChart, heartRateChart;
+        let ecgData = [];
+        let heartRateData = [];
+        let qrsDetectionCount = 0;
+        let isDataLoading = false;
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeDashboard();
+            setInterval(refreshData, CONFIG.UPDATE_INTERVAL);
+        });
+
+        function initializeDashboard() {
+            // Set current date
+            document.getElementById('reportDate').textContent = new Date().toLocaleDateString();
+            document.getElementById('lastUpdate').textContent = new Date().toLocaleString();
+            
+            // Initialize charts
+            initializeCharts();
+            
+            // Load initial data
+            refreshData();
+        }
+
+        function initializeCharts() {
+            // ECG Chart
+            const ecgCtx = document.getElementById('ecgChart').getContext('2d');
+            ecgChart = new Chart(ecgCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'ECG Signal (Pan-Tompkins Processed)',
+                        data: [],
+                        borderColor: '#e53e3e',
+                        backgroundColor: 'rgba(229, 62, 62, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Time (seconds)'
+                            }
+                        },
+                        y: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Amplitude'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    },
+                    animation: {
+                        duration: 750
+                    }
+                }
+            });
+
+            // Heart Rate Chart
+            const hrCtx = document.getElementById('heartRateChart').getContext('2d');
+            heartRateChart = new Chart(hrCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Heart Rate (BPM)',
+                        data: [],
+                        borderColor: '#3182ce',
+                        backgroundColor: 'rgba(49, 130, 206, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Time'
+                            }
+                        },
+                        y: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Heart Rate (BPM)'
+                            },
+                            min: 50,
+                            max: 150
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: true,
+                            position: 'top'
+                        }
+                    }
+                }
+            });
+        }
+
+        async function refreshData() {
+            if (isDataLoading) return;
+            
+            isDataLoading = true;
+            
+            try {
+                // Show loading for ECG chart
+                document.getElementById('chartLoading').style.display = 'flex';
+                document.getElementById('ecgChart').style.display = 'none';
+                
+                // Fetch data from multiple variables
+                const variables = Object.values(CONFIG.VARIABLES);
+                const promises = variables.map(variable => fetchUbidotsData(variable));
+                
+                const results = await Promise.all(promises);
+                
+                // Process the fetched data
+                processUbidotsData(results);
+                
+                // Hide loading, show chart
+                document.getElementById('chartLoading').style.display = 'none';
+                document.getElementById('ecgChart').style.display = 'block';
+                
+                // Update timestamp
+                document.getElementById('lastUpdate').textContent = new Date().toLocaleString();
+                
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                showError('Failed to fetch data from Ubidots. Please check your token and device configuration.');
+            }
+            
+            isDataLoading = false;
+        }
+
+        async function fetchUbidotsData(variable) {
+            const url = `https://industrial.api.ubidots.com/api/v1.6/devices/${CONFIG.DEVICE_LABEL}/${variable}/values/`;
+            
+            const response = await fetch(url, {
+                headers: {
+                    'X-Auth-Token': CONFIG.UBIDOTS_TOKEN,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            return { variable, data: data.results || [] };
+        }
+
+        function processUbidotsData(results) {
+            results.forEach(result => {
+                const { variable, data } = result;
+                
+                if (data.length === 0) return;
+                
+                // Get the latest values
+                const latestData = data.slice(0, CONFIG.DATA_POINTS_LIMIT).reverse();
+                
+                switch (variable) {
+                    case CONFIG.VARIABLES.ECG_RAW:
+                    case CONFIG.VARIABLES.ECG_FILTERED:
+                        updateECGChart(latestData);
+                        break;
+                        
+                    case CONFIG.VARIABLES.HEART_RATE:
+                        updateHeartRateChart(latestData);
+                        updateHeartRateMetric(latestData[latestData.length - 1]);
+                        break;
+                        
+                    case CONFIG.VARIABLES.RR_INTERVAL:
+                        updateRRIntervalMetric(latestData[latestData.length - 1]);
+                        break;
+                        
+                    case CONFIG.VARIABLES.QRS_DETECTED:
+                        updateQRSCount(latestData);
+                        break;
+                        
+                    case CONFIG.VARIABLES.HRV_RMSSD:
+                        updateHRVMetric(latestData[latestData.length - 1]);
+                        break;
+                }
+            });
+            
+            // Update overall analysis
+            updateAnalysis();
+        }
+
+        function updateECGChart(data) {
+            const labels = data.map((_, index) => (index * 0.005).toFixed(3)); // 5ms intervals
+            const values = data.map(point => point.value);
+            
+            ecgChart.data.labels = labels;
+            ecgChart.data.datasets[0].data = values;
+            ecgChart.update('none');
+        }
+
+        function updateHeartRateChart(data) {
+            const labels = data.map(point => new Date(point.timestamp).toLocaleTimeString());
+            const values = data.map(point => point.value);
+            
+            heartRateChart.data.labels = labels;
+            heartRateChart.data.datasets[0].data = values;
+            heartRateChart.update('none');
+        }
+
+        function updateHeartRateMetric(dataPoint) {
+            if (!dataPoint) return;
+            
+            const heartRate = Math.round(dataPoint.value);
+            document.getElementById('heartRateValue').textContent = heartRate;
+            
+            // Update status based on heart rate
+            updateHeartRateStatus(heartRate);
+        }
+
+        function updateRRIntervalMetric(dataPoint) {
+            if (!dataPoint) return;
+            
+            const rrInterval = Math.round(dataPoint.value);
+            document.getElementById('rrIntervalValue').textContent = rrInterval;
+        }
+
+        function updateHRVMetric(dataPoint) {
+            if (!dataPoint) return;
+            
+            const hrv = parseFloat(dataPoint.value).toFixed(1);
+            document.getElementById('hrvValue').textContent = hrv;
+        }
+
+        function updateQRSCount(data) {
+            const qrsCount = data.filter(point => point.value === 1).length;
+            qrsDetectionCount = qrsCount;
+            document.getElementById('qrsCount').textContent = qrsCount;
+        }
+
+        function updateHeartRateStatus(heartRate) {
+            const statusIndicator = document.getElementById('statusIndicator');
+            const statusIcon = document.getElementById('statusIcon');
+            const overallStatus = document.getElementById('overallStatus');
+            const statusDescription = document.getElementById('statusDescription');
+            
+            // Remove existing classes
+            statusIndicator.className = 'status-indicator';
+            
+            if (heartRate < 60) {
+                statusIndicator.classList.add('status-warning');
+                statusIcon.textContent = '⚠️';
+                overallStatus.textContent = 'Bradycardia';
+                statusDescription.textContent = 'Heart rate below normal range';
+            } else if (heartRate > 100) {
+                if (heartRate > 120) {
+                    statusIndicator.classList.add('status-critical');
+                    statusIcon.textContent = '🚨';
+                    overallStatus.textContent = 'Severe Tachycardia';
+                    statusDescription.textContent = 'Heart rate critically high';
+                } else {
+                    statusIndicator.classList.add('status-warning');
+                    statusIcon.textContent = '⚠️';
+                    overallStatus.textContent = 'Tachycardia';
+                    statusDescription.textContent = 'Heart rate above normal range';
+                }
+            } else {
+                statusIndicator.classList.add('status-normal');
+                statusIcon.textContent = '❤️';
+                overallStatus.textContent = 'Normal';
+                statusDescription.textContent = 'Heart rate within normal range';
+            }
+        }
+
+        function updateAnalysis() {
+            const heartRate = parseInt(document.getElementById('heartRateValue').textContent) || 0;
+            const rrInterval = parseInt(document.getElementById('rrIntervalValue').textContent) || 0;
+            const hrv = parseFloat(document.getElementById('hrvValue').textContent) || 0;
+            
+            // Heart Rate Analysis
+            let hrAnalysis = '';
+            if (heartRate < 60) {
+                hrAnalysis = 'Bradycardia detected - Heart rate below 60 BPM';
+            } else if (heartRate > 100) {
+                hrAnalysis = heartRate > 120 ? 'Severe tachycardia - Immediate attention recommended' : 'Mild to moderate tachycardia detected';
+            } else {
+                hrAnalysis = 'Heart rate within normal range (60-100 BPM)';
+            }
+            
+            // Rhythm Analysis
+            let rhythmAnalysis = '';
+            if (rrInterval > 0) {
+                const expectedRR = 60000 / heartRate; // Expected RR interval
+                const variation = Math.abs(rrInterval - expectedRR) / expectedRR * 100;
+                
+                if (variation < 10) {
+                    rhythmAnalysis = 'Regular rhythm detected';
+                } else if (variation < 25) {
+                    rhythmAnalysis = 'Mild rhythm irregularity';
+                } else {
+                    rhythmAnalysis = 'Significant rhythm irregularity - Further evaluation needed';
+                }
+            } else {
+                rhythmAnalysis = 'Rhythm analysis pending - Collecting data...';
+            }
+            
+            // Clinical Flags
+            let flags = [];
+            if (heartRate < 60) flags.push('Bradycardia');
+            if (heartRate > 100) flags.push('Tachycardia');
+            if (heartRate > 120) flags.push('Severe Tachycardia');
+            if (hrv < 20 && hrv > 0) flags.push('Low HRV');
+            
+            const clinicalFlags = flags.length > 0 ? flags.join(', ') : 'No significant abnormalities detected';
+            
+            // Summary
+            let summary = '';
+            if (flags.length === 0) {
+                summary = 'Normal ECG parameters detected. Continue regular monitoring.';
+            } else if (flags.includes('Severe Tachycardia')) {
+                summary = 'Critical heart rate detected. Immediate medical attention recommended.';
+            } else {
+                summary = 'Abnormal parameters detected. Consider medical consultation for further evaluation.';
+            }
+            
+            // Update DOM
+            document.getElementById('hrAnalysis').textContent = hrAnalysis;
+            document.getElementById('rhythmAnalysis').textContent = rhythmAnalysis;
+            document.getElementById('clinicalFlags').textContent = clinicalFlags;
+            document.getElementById('summaryText').textContent = summary;
+        }
+
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = message;
+            
+            const content = document.querySelector('.content');
+            content.insertBefore(errorDiv, content.firstChild);
+            
+            // Remove error message after 10 seconds
+            setTimeout(() => {
+                if (errorDiv.parentNode) {
+                    errorDiv.parentNode.removeChild(errorDiv);
+                }
+            }, 10000);
+        }
+
+        function downloadPDF() {
+            const element = document.getElementById('dashboard');
+            const opt = {
+                margin: 0.5,
+                filename: `ECG_Report_${new Date().toISOString().split('T')[0]}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { 
+                    scale: 2,
+                    useCORS: true,
+                    allowTaint: true 
+                },
+                jsPDF: { 
+                    unit: 'in', 
+                    format: 'letter', 
+                    orientation: 'portrait' 
+                }
+            };
+            
+            html2pdf().set(opt).from(element).save();
+        }
+
+        // Utility function to simulate data for demo purposes
+        function generateDemoData() {
+            // This function can be used for testing without actual Ubidots connection
+            const demoECG = Array.from({length: 100}, (_, i) => ({
+                value: Math.sin(i * 0.1) * 100 + Math.random() * 20 + 500,
+                timestamp: Date.now() - (100 - i) * 50
+            }));
+            
+            const demoHR = Array.from({length: 20}, (_, i) => ({
+                value: 75 + Math.sin(i * 0.2) * 10 + Math.random() * 5,
+                timestamp: Date.now() - (20 - i) * 5000
+            }));
+            
+            updateECGChart(demoECG);
+            updateHeartRateChart(demoHR);
+            updateHeartRateMetric(demoHR[demoHR.length - 1]);
+            updateRRIntervalMetric({value: 800});
+            updateHRVMetric({value: 45.2});
+            updateQRSCount([{value: 1}, {value: 0}, {value: 1}, {value: 1}]);
+            updateAnalysis();
+        }
+
+        // Uncomment the line below for demo mode (when Ubidots is not available)
+        // setTimeout(generateDemoData, 1000);
+    </script>
 </body>
 </html>
